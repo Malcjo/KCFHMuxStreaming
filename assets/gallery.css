@@ -1,0 +1,41 @@
+.kcfh-stream-grid {
+  display: grid;
+  gap: 16px;
+}
+@media (max-width: 700px) {
+  .kcfh-stream-grid { grid-template-columns: 1fr !important; }
+}
+.kcfh-stream-card {
+  background: #111;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.kcfh-stream-card mux-player,
+.kcfh-stream-card video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.kcfh-stream-meta {
+  padding: 10px 12px;
+  color: #eee;
+  font-size: 14px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kcfh-stream-title { font-weight: 600; }
+.kcfh-stream-subtle { color: #bbb; font-size: 12px; }
+.kcfh-stream-pager { margin-top: 16px; text-align: center; }
+.kcfh-stream-next {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #1f2937;
+  color: #fff;
+  text-decoration: none;
+}
+.kcfh-stream-next:hover { background: #374151; }
+.kcfh-streaming-error { color: #c33; }
