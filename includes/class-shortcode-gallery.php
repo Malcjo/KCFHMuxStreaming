@@ -38,6 +38,11 @@ class Shortcode_Gallery {
             'poster_fallback' => '',    // optional: fallback image URL for posters
             'showtitle'    => 'true',
 
+            'source'           => 'clients',   // 'clients' | 'mux'
+            'client_order'     => 'date',      // 'date' | 'title'
+            'client_order_dir' => 'desc',      // 'asc' | 'desc'
+            'include_empty'    => 'false',     // show clients with no playback/live? default: false
+
             // Grid fetch options
             'limit'      => 12,
             'status'     => 'ready',
@@ -70,6 +75,12 @@ class Shortcode_Gallery {
         if ($view === 'single') {
             $playback_id = $qs_playback ?: ( $atts['playback_id'] ? sanitize_text_field($atts['playback_id']) : '' );
             return self::render_single($playback_id, $poster_fallback);
+        }
+
+        //render from Clients instead of Mux if requested
+        $source = strtolower($atts['source']);
+        if ($view === 'grid' && $source === 'clients') {
+            return self::render_clients_grid($atts, $columns, $poster_fallback);
         }
 
         // Otherwise grid
@@ -176,6 +187,91 @@ class Shortcode_Gallery {
 
         return $html;
     }
+
+    private static function render_clients_grid($atts, $columns, $poster_fallback) {
+    // Live settings (one live client; single camera playback id)
+    $live_client_id = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
+    $live_playback  = get_option(Admin_UI::OPT_LIVE_PLAYBACK, '');
+
+    $orderby = ($atts['client_order'] === 'title') ? 'title' : 'date';
+    $order   = (strtolower($atts['client_order_dir']) === 'asc') ? 'ASC' : 'DESC';
+    $include_empty = (strtolower($atts['include_empty']) === 'true');
+
+    $clients = get_posts([
+        'post_type'      => CPT_Client::POST_TYPE,
+        'posts_per_page' => -1,
+        'orderby'        => $orderby,
+        'order'          => $order,
+        'no_found_rows'  => true,
+    ]);
+
+    if (empty($clients)) return '<p>No clients yet.</p>';
+
+    $grid_style = sprintf('grid-template-columns:repeat(%d, minmax(0,1fr));', $columns);
+    $html  = '<div class="kcfh-stream-grid" style="' . esc_attr($grid_style) . '">';
+
+    foreach ($clients as $p) {
+        $name = get_the_title($p);
+        $dob  = get_post_meta($p->ID, '_kcfh_dob', true);
+        $dod  = get_post_meta($p->ID, '_kcfh_dod', true);
+        $vod_playback = get_post_meta($p->ID, '_kcfh_playback_id', true);
+
+        $is_live   = ($p->ID === $live_client_id) && !empty($live_playback);
+        $playback  = $is_live ? $live_playback : $vod_playback;
+
+        if (!$playback && !$include_empty) {
+            // Skip clients that have neither live nor VOD
+            continue;
+        }
+
+        $thumb = $playback ? self::thumbnail_url($playback, 640, 360, 2) : '';
+        $link  = $playback ? add_query_arg('kcfh_pb', rawurlencode($playback)) : '#';
+
+        $dob_str = $dob ? date_i18n(get_option('date_format'), strtotime($dob)) : '';
+        $dod_str = $dod ? date_i18n(get_option('date_format'), strtotime($dod)) : '';
+        $dates   = trim($dob_str . (($dob_str && $dod_str) ? ' – ' : '') . $dod_str);
+
+        $card  = '<a class="kcfh-thumb'.($playback ? '' : ' kcfh-thumb-disabled').'" href="'. esc_url($link) .'" aria-label="Open video for '. esc_attr($name) .'">';
+        $card .= '  <span class="kcfh-thumb-inner">';
+        if ($thumb) {
+            $card .= '    <img src="'. esc_url($thumb) .'" alt="" loading="lazy" ' .
+                     ($poster_fallback ? 'onerror="this.onerror=null;this.src=\''. esc_url($poster_fallback) .'\';"' : '') .
+                     '>';
+        } else {
+            $card .= '    <span class="kcfh-thumb-placeholder"></span>';
+        }
+        $card .= '    <span class="kcfh-play-badge" aria-hidden="true">▶</span>';
+        if ($is_live) {
+            $card .= '    <span class="kcfh-live-badge" aria-hidden="true">LIVE</span>';
+        }
+        $card .= '  </span>';
+
+        $card .= '  <div class="kcfh-stream-meta">';
+        $card .= '    <div class="kcfh-stream-title">'. esc_html($name) .'</div>';
+        if ($dates) {
+            $card .= '    <div class="kcfh-stream-subtle">'. esc_html($dates) .'</div>';
+        }
+        $card .= '  </div>';
+
+        $card .= '</a>';
+
+        // allow theme/plugins to alter
+        $card = apply_filters('kcfh_streaming_card_html', $card, [
+            'client_id' => $p->ID,
+            'name'      => $name,
+            'dob'       => $dob,
+            'dod'       => $dod,
+            'playback'  => $playback,
+            'is_live'   => $is_live,
+        ], $playback);
+
+        $html .= $card;
+    }
+
+    $html .= '</div>';
+    return $html;
+}
+
 
     private static function thumbnail_url($playback_id, $w=640, $h=360, $sec=1) {
         // See: https://image.mux.com/{PLAYBACK_ID}/thumbnail.jpg?[params]

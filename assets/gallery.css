@@ -64,6 +64,18 @@
   display: block;
 }
 
+/* When a client has no VOD/live (if include_empty=true) */
+.kcfh-thumb-disabled {
+  pointer-events: none;
+  opacity: .6;
+}
+.kcfh-thumb-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #111;
+}
+
 .kcfh-play-badge {
   position: absolute;
   right: 12px;
@@ -89,6 +101,20 @@
 .kcfh-thumb:hover .kcfh-play-badge {
   transform: scale(1.06);
   background: rgba(0,0,0,0.75);
+}
+
+/* LIVE badge */
+.kcfh-live-badge {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  background: #ef4444;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .08em;
+  padding: 6px 10px;
+  border-radius: 999px;
 }
 
 .kcfh-single{
