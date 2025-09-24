@@ -24,11 +24,23 @@ if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
 require_once KCFH_STREAMING_DIR . 'includes/class-asset-service.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-shortcode-gallery.php';
 
+require_once KCFH_STREAMING_DIR . 'includes/class-cpt-client.php';
+require_once KCFH_STREAMING_DIR . 'includes/class-admin.php';
+
 add_action('plugins_loaded', function () {
     // Init services
     \KCFH\Streaming\Asset_Service::init();
     \KCFH\Streaming\Shortcode_Gallery::init();
+    \KCFH\Streaming\CPT_Client::init();
 });
+
+
+add_action('admin_menu', function () {
+  \KCFH\Streaming\Admin_UI::register_menus();
+});
+
+add_action('admin_post_kcfh_assign_vod', ['\\KCFH\\Streaming\\Admin_UI', 'handle_assign_vod']);
+
 
 
 add_filter('wp_resource_hints', function($hints, $relation){

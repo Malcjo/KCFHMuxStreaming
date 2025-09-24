@@ -102,11 +102,15 @@ class Asset_Service {
 
 
             return [
-                'title'        => isset($a['meta']['title']) ? sanitize_text_field($a['meta']['title']) : '',
                 'id'           => isset($a['id']) ? sanitize_text_field($a['id']) : '',
                 'status'       => isset($a['status']) ? sanitize_text_field($a['status']) : '',
                 'created_at'   => isset($a['created_at']) ? sanitize_text_field($a['created_at']) : '',
                 'playback_ids' => isset($a['playback_ids']) && is_array($a['playback_ids']) ? $a['playback_ids'] : [],
+                
+                'title'        => !empty($meta['title']) ? sanitize_text_field($meta['title'])
+                                : (!empty($a['title']) ? sanitize_text_field($a['title']) : ''),
+                'creator_id'   => !empty($meta['creator_id'])  ? sanitize_text_field($meta['creator_id'])  : '',
+                'external_id'  => !empty($meta['external_id']) ? sanitize_text_field($meta['external_id']) : '',
                 'passthrough'  => isset($a['passthrough']) ? sanitize_text_field($a['passthrough']) : '',
             ];
         }, $json['data']);
@@ -141,6 +145,56 @@ class Asset_Service {
         // fallback to first if policy missing
         return !empty($asset['playback_ids'][0]['id']) ? sanitize_text_field($asset['playback_ids'][0]['id']) : null;
     }
+
+    public static function fetch_asset($asset_id, $cache_ttl = 300) {
+    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
+    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    if (!$token_id || !$token_secret) {
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured.');
+    }
+
+    $url = self::API_BASE . '/assets/' . rawurlencode($asset_id);
+    $cache_key = KCFH_STREAMING_CACHE_PREFIX . 'asset_' . md5($asset_id);
+    if ($cache_ttl > 0 && ($cached = get_transient($cache_key)) !== false) return $cached;
+
+    $resp = wp_remote_get($url, [
+        'headers' => [
+            'Authorization' => 'Basic ' . base64_encode($token_id . ':' . $token_secret),
+            'Accept'        => 'application/json',
+        ],
+        'timeout' => 20,
+    ]);
+    if (is_wp_error($resp)) return $resp;
+
+    $code = wp_remote_retrieve_response_code($resp);
+    $body = wp_remote_retrieve_body($resp);
+    if ($code < 200 || $code >= 300) {
+        return new \WP_Error('kcfh_mux_http', 'Mux API HTTP ' . $code . ': ' . $body);
+    }
+    $json = json_decode($body, true);
+    if (!is_array($json) || empty($json['data'])) {
+        return new \WP_Error('kcfh_mux_json', 'Unexpected Mux response.');
+    }
+
+    // Reuse the same normalizer (single item)
+    $a = $json['data'];
+    $meta = isset($a['meta']) && is_array($a['meta']) ? $a['meta'] : [];
+    $asset = [
+        'id'           => isset($a['id']) ? sanitize_text_field($a['id']) : '',
+        'status'       => isset($a['status']) ? sanitize_text_field($a['status']) : '',
+        'created_at'   => isset($a['created_at']) ? sanitize_text_field($a['created_at']) : '',
+        'playback_ids' => isset($a['playback_ids']) && is_array($a['playback_ids']) ? $a['playback_ids'] : [],
+        'title'        => !empty($meta['title']) ? sanitize_text_field($meta['title'])
+                        : (!empty($a['title']) ? sanitize_text_field($a['title']) : ''),
+        'creator_id'   => !empty($meta['creator_id'])  ? sanitize_text_field($meta['creator_id'])  : '',
+        'external_id'  => !empty($meta['external_id']) ? sanitize_text_field($meta['external_id']) : '',
+        'passthrough'  => isset($a['passthrough']) ? sanitize_text_field($a['passthrough']) : '',
+    ];
+
+    if ($cache_ttl > 0) set_transient($cache_key, $asset, $cache_ttl);
+    return $asset;
+}
+
 
 
 }
