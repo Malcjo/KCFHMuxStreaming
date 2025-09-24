@@ -26,8 +26,8 @@
   flex-direction: column;
   gap: 4px;
 }
-.kcfh-stream-title { font-weight: 600; }
-.kcfh-stream-subtle { color: #bbb; font-size: 12px; }
+.kcfh-stream-title { color: #252020; font-size: 12px; font-weight: 600; }
+.kcfh-stream-subtle { color: #252020; font-size: 12px; }
 .kcfh-stream-pager { margin-top: 16px; text-align: center; }
 .kcfh-stream-next {
   display: inline-block;

@@ -36,7 +36,7 @@ class Shortcode_Gallery {
             'cache_ttl'    => 60,
             'detail_page'  => '',       // optional: link thumbnails to a specific page URL
             'poster_fallback' => '',    // optional: fallback image URL for posters
-            'showtitle'    => 'false',
+            'showtitle'    => 'true',
 
             // Grid fetch options
             'limit'      => 12,
@@ -101,7 +101,8 @@ class Shortcode_Gallery {
         $detail_page = $atts['detail_page'] ? esc_url_raw($atts['detail_page']) : '';
         $grid_style = sprintf('grid-template-columns:repeat(%d, minmax(0,1fr));', $columns);//-----------------
 
-        $html  = '<div class="kcfh-stream-grid" style="' . esc_attr($grid_style) . '">';//---------------
+        $html  = '<style>figure#FrontImage{display:block !important;}</style>';
+        $html  .= '<div class="kcfh-stream-grid" style="' . esc_attr($grid_style) . '">';//---------------
 
         foreach ($assets as $asset) {
             $playback = Asset_Service::first_public_playback_id($asset);
@@ -111,8 +112,18 @@ class Shortcode_Gallery {
             $link = $detail_page ? add_query_arg('kcfh_pb', rawurlencode($playback), $detail_page)
                                  : add_query_arg('kcfh_pb', rawurlencode($playback)); // same page
 
-            $title     = $showtitle ? ('Asset ' . $asset['id']) : '';
-            $createdAt = !empty($asset['created_at']) ? esc_html($asset['created_at']) : '';
+
+            // Pick the best label for display
+            $label = !empty($asset['title'])
+                ? $asset['title']
+                : (!empty($asset['passthrough']) ? $asset['passthrough'] : ('Asset ' . $asset['id']));
+
+            // Only render if showtitle="true"
+            if ($showtitle) {
+                $title = !empty($asset['title']) ? esc_html($asset['title']) : 'Asset ' . $asset[''];
+            }
+            //$createdAt = !empty($asset['created_at']) ? esc_html($asset['created_at']) : '';
+            $createdAt = !empty($asset['created_at']) ? date('Y-m-d H:i:s', $asset['created_at']) : '';
 
             $card  = '<a class="kcfh-thumb" href="'. esc_url($link) .'" aria-label="Open video">';
             $card .= '  <span class="kcfh-thumb-inner">';
@@ -123,12 +134,12 @@ class Shortcode_Gallery {
             $card .= '  </span>';
             if ($title || $createdAt) {
                 $card .= '<div class="kcfh-stream-meta">';
-                if ($title)     $card .= '<div class="kcfh-stream-title">'. esc_html($title) .'</div>';
+                if ($title)     $card .= '<div class="kcfh-stream-title">Title: '. $title .'</div>';
                 if ($createdAt) $card .= '<div class="kcfh-stream-subtle">Created: '. $createdAt .'</div>';
                 $card .= '</div>';
             }
             $card .= '</a>';
-
+            //esc_html($title)
             // Allow enrichment via filter (ACF/CPT injection)
             $card = apply_filters('kcfh_streaming_card_html', $card, $asset, $playback);
             $html .= $card;
@@ -149,10 +160,14 @@ class Shortcode_Gallery {
             return '<p>Missing playback ID.</p>';
         }
 
+
+
         $back_url = esc_url(remove_query_arg('kcfh_pb'));
         $poster   = self::thumbnail_url($playback_id, 1280, 720, 2);
 
-        $html  = '<div class="kcfh-single">';
+        $html  = '<style>figure#FrontImage{display:none !important;}</style>';
+        $html  .= '<div class="kcfh-single">';
+        
         $html .= '  <a class="kcfh-back" href="'. $back_url .'">← Back</a>';
         // poster is optional—mux-player auto-assigns one using the playback id
         $html .= '  <mux-player playback-id="'. esc_attr($playback_id) .'" stream-type="on-demand" controls ' .

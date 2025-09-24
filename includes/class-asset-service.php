@@ -59,27 +59,7 @@ class Asset_Service {
         }
 
 
-        return GetResults($url,$token_id, $token_secret);
-
-    }
-
-    /**
-     * Get first public playback ID from a normalized asset.
-     */
-    public static function first_public_playback_id(array $asset) {
-        if (empty($asset['playback_ids'])) return null;
-        foreach ($asset['playback_ids'] as $p) {
-            $policy = isset($p['policy']) ? strtolower(sanitize_text_field($p['policy'])) : 'public';
-            if ($policy === 'public' && !empty($p['id'])) return sanitize_text_field($p['id']);
-        }
-        // fallback to first if policy missing
-        return !empty($asset['playback_ids'][0]['id']) ? sanitize_text_field($asset['playback_ids'][0]['id']) : null;
-    }
-
-
-
-    public function GetResults($url, $token_id, $token_secret){
-                //Checking credentials
+        //Checking credentials
         //Credentials are sent using HTTP Basic
         $resp = wp_remote_get($url, [
             'headers' => [
@@ -108,11 +88,26 @@ class Asset_Service {
         // sanitize
         // Normalize minimal fields for rendering
         $assets = array_map(function ($a) {
+            $meta = isset($a['meta']) && is_array($a['meta']) ? $a['meta'] : [];
+            $title = '';
+            if (!empty($meta['title'])) {
+                $title = sanitize_text_field($meta['title']);
+            } elseif (!empty($a['title'])) {
+                // Just in case a top-level `title` appears from older/newer responses
+                $title = sanitize_text_field($a['title']);
+            } elseif (!empty($a['passthrough'])) {
+                // Last-ditch fallback if you used passthrough as the “title”
+                $title = sanitize_text_field($a['passthrough']);
+            }
+
+
             return [
+                'title'        => isset($a['meta']['title']) ? sanitize_text_field($a['meta']['title']) : '',
                 'id'           => isset($a['id']) ? sanitize_text_field($a['id']) : '',
                 'status'       => isset($a['status']) ? sanitize_text_field($a['status']) : '',
                 'created_at'   => isset($a['created_at']) ? sanitize_text_field($a['created_at']) : '',
                 'playback_ids' => isset($a['playback_ids']) && is_array($a['playback_ids']) ? $a['playback_ids'] : [],
+                'passthrough'  => isset($a['passthrough']) ? sanitize_text_field($a['passthrough']) : '',
             ];
         }, $json['data']);
 
@@ -131,5 +126,21 @@ class Asset_Service {
         }
 
         return $result;
+
     }
+
+    /**
+     * Get first public playback ID from a normalized asset.
+     */
+    public static function first_public_playback_id(array $asset) {
+        if (empty($asset['playback_ids'])) return null;
+        foreach ($asset['playback_ids'] as $p) {
+            $policy = isset($p['policy']) ? strtolower(sanitize_text_field($p['policy'])) : 'public';
+            if ($policy === 'public' && !empty($p['id'])) return sanitize_text_field($p['id']);
+        }
+        // fallback to first if policy missing
+        return !empty($asset['playback_ids'][0]['id']) ? sanitize_text_field($asset['playback_ids'][0]['id']) : null;
+    }
+
+
 }

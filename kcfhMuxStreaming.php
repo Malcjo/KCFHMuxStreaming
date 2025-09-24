@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: KCFH-Streaming
- * Description: Secure Mux integration (shortcodes, utilities). First feature: [kcfh_stream] gallery of Mux VOD assets.
+ * Description: Secure Mux integration (shortcodes, utilities). First feature: [kcfh_stream_gallery] gallery of Mux VOD assets.
  * Version:     0.1.0
  * Author:      KCFH
  * License:     GPLv2 or later
@@ -39,3 +39,21 @@ add_filter('wp_resource_hints', function($hints, $relation){
   }
   return $hints;
 }, 10, 2);
+
+// Show an admin notice telling you if the shortcode is registered
+add_action('admin_notices', function () {
+  echo '<div class="notice '.(shortcode_exists('kcfh_stream_gallery') ? 'notice-success' : 'notice-error').'"><p>';
+  echo shortcode_exists('kcfh_stream_gallery')
+    ? '[KCFH] Shortcode <code>kcfh_stream_gallery</code> registered.'
+    : '[KCFH] Shortcode <code>kcfh_stream_gallery</code> NOT registered.';
+  echo '</p></div>';
+});
+
+// Log whether your MUX constants are defined on THIS site
+add_action('init', function () {
+  if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
+    error_log('[KCFH] MUX constants NOT defined');
+  } else {
+    error_log('[KCFH] MUX constants present');
+  }
+});
