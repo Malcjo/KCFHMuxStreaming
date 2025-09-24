@@ -29,3 +29,13 @@ add_action('plugins_loaded', function () {
     \KCFH\Streaming\Asset_Service::init();
     \KCFH\Streaming\Shortcode_Gallery::init();
 });
+
+
+add_filter('wp_resource_hints', function($hints, $relation){
+  if ($relation === 'preconnect') {
+    $hints[] = 'https://image.mux.com';
+    $hints[] = 'https://stream.mux.com';
+    $hints[] = 'https://cdn.jsdelivr.net';
+  }
+  return $hints;
+}, 10, 2);
