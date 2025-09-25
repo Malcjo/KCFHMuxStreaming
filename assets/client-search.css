@@ -1,0 +1,8 @@
+.kcfh-searchbar { margin-bottom: 1rem; }
+.kcfh-searchbar-label { position: absolute; left: -9999px; }
+.kcfh-searchbar-row { display: flex; gap: .5rem; align-items: center; }
+.kcfh-searchbar-input { flex: 1 1 auto; padding: .6rem .8rem; border: 1px solid #d1d5db; border-radius: .5rem; }
+.kcfh-searchbar-btn { display:inline-block; padding:.55rem .9rem; border-radius:.5rem; text-decoration:none; border:1px solid transparent; }
+.kcfh-searchbar-btn--primary { background:#111827; color:#fff; }
+.kcfh-searchbar-btn--ghost { background:transparent; border-color:#d1d5db; color:#111827; }
+.kcfh-searchbar-btn:hover { filter:brightness(0.98); }

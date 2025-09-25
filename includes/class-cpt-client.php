@@ -39,23 +39,61 @@ class CPT_Client {
     $dob  = get_post_meta($post->ID, '_kcfh_dob', true);
     $dod  = get_post_meta($post->ID, '_kcfh_dod', true);
     $asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
+    
+    
+    ?>
 
-    echo '<style>.kcfh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:800px}</style>';
-    echo '<div class="kcfh-grid">';
-    echo '<p><label>Date of Birth<br><input type="date" name="kcfh_dob" value="'.esc_attr($dob).'"></label></p>';
-    echo '<p><label>Date of Death<br><input type="date" name="kcfh_dod" value="'.esc_attr($dod).'"></label></p>';
-    echo '<p><label>Primary VOD Asset ID<br><input type="text" name="kcfh_asset_id" value="'.esc_attr($asset_id).'" class="regular-text"></label><br><small>Paste a Mux Asset ID you want as the default VOD.</small></p>';
-    echo '</div>';
-    echo '<p><small>Use the Featured Image box for the profile photo.</small></p>';
+    <style>
+      .kcfh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:800px}
+    </style>
+
+    <div class="kcfh-grid">
+      <p>
+        <label for="kcfh_dob">Date of Birth</label><br>
+        <input type="date" id="kcfh_dob" name="kcfh_dob" value="<?= esc_attr($dob); ?>">
+      </p>
+
+      <p>
+        <label for="kcfh_dod">Date of Death</label><br>
+        <input type="date" id="kcfh_dod" name="kcfh_dod" value="<?= esc_attr($dod); ?>">
+      </p>
+
+      <p>
+        <label for="kcfh_asset_id">Primary VOD Asset ID</label><br>
+        <input type="text" id="kcfh_asset_id" name="kcfh_asset_id" value="<?= esc_attr($asset_id); ?>" class="regular-text">
+        <br><small>Paste a Mux Asset ID you want as the default VOD.</small>
+      </p>
+    </div>
+
+    <p><small>Use the Featured Image box for the profile photo.</small></p>
+    <?php
 
     $playback   = get_post_meta($post->ID, '_kcfh_playback_id', true);
     $vod_title  = get_post_meta($post->ID, '_kcfh_vod_title', true);
     $ext_id     = get_post_meta($post->ID, '_kcfh_external_id', true);
 
-    echo '<hr><h3>Assigned VOD</h3>';
-    echo '<p><label>VOD Title<br><input type="text" value="'.esc_attr($vod_title).'" class="regular-text" disabled></label></p>';
-    echo '<p><label>Playback ID (for player)<br><input type="text" value="'.esc_attr($playback).'" class="regular-text" disabled></label></p>';
-    echo '<p><label>External ID (Mux meta)<br><input type="text" value="'.esc_attr($ext_id).'" class="regular-text" disabled></label></p>';
+    ?>
+    <hr>
+    <h3>Assigned VOD</h3>
+    <p>
+      <label>
+        VOD Title<br>
+        <input type="text" value="<?= esc_attr($vod_title); ?>" class="regular-text" disabled>
+      </label>
+    </p>
+    <p>
+      <label>
+        Playback ID (for player)<br>
+        <input type="text" value="<?= esc_attr($playback) ?>" class="regular-text" disabled>
+      </label>
+    </p>
+    <p>
+      <label>
+        External ID (Mux meta)<br>
+        <input type="text" value="<?= esc_attr($ext_id) ?>" class="regular-text" disabled>
+      </label>
+    </p>
+    <?php
 
     if ($playback) {
         $thumb = esc_url(add_query_arg(['width'=>480,'height'=>270,'time'=>2,'fit_mode'=>'smartcrop'], "https://image.mux.com/$playback/thumbnail.jpg"));
