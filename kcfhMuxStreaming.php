@@ -27,12 +27,17 @@ require_once KCFH_STREAMING_DIR . 'includes/class-shortcode-gallery.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-cpt-client.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-admin.php';
 
+require_once KCFH_STREAMING_DIR . 'includes/class-shortcode-client-search.php';
+
+
 add_action('plugins_loaded', function () {
     // Init services
     \KCFH\Streaming\Asset_Service::init();
     \KCFH\Streaming\Shortcode_Gallery::init();
     \KCFH\Streaming\CPT_Client::init();
+    \KCFH\Streaming\Shortcode_Client_Search::init();
 });
+
 
 
 add_action('admin_menu', function () {
@@ -40,8 +45,6 @@ add_action('admin_menu', function () {
 });
 
 add_action('admin_post_kcfh_assign_vod', ['\\KCFH\\Streaming\\Admin_UI', 'handle_assign_vod']);
-
-
 
 add_filter('wp_resource_hints', function($hints, $relation){
   if ($relation === 'preconnect') {
@@ -69,3 +72,6 @@ add_action('init', function () {
     error_log('[KCFH] MUX constants present');
   }
 });
+
+
+
