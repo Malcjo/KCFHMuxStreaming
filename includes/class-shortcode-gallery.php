@@ -116,7 +116,11 @@ class Shortcode_Gallery {
         return self::render_mux_grid($assets, $columns, $poster_fallback, $showtitle, $detail_page, $next);
     }
 
+<<<<<<< HEAD
     public static function render_single($playback_id, $poster_fallback) {
+=======
+    private static function render_single($playback_id, $poster_fallback) {
+>>>>>>> f2c7e07ab866a5d4cf98d2b7c8baa5003f3c0c52
         if (!$playback_id) { return '<p>Missing playback ID.</p>'; }
 
         $back_url = esc_url(remove_query_arg('kcfh_pb'));
@@ -137,7 +141,11 @@ class Shortcode_Gallery {
         return ob_get_clean();
     }
 
+<<<<<<< HEAD
 public static function render_clients_grid($atts, $columns, $poster_fallback, $search_term_override = null) {
+=======
+private static function render_clients_grid($atts, $columns, $poster_fallback) {
+>>>>>>> f2c7e07ab866a5d4cf98d2b7c8baa5003f3c0c52
     $live_client_id = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
     $live_playback  = get_option(Admin_UI::OPT_LIVE_PLAYBACK, '');
 
@@ -197,6 +205,7 @@ public static function render_clients_grid($atts, $columns, $poster_fallback, $s
 
     if (empty($clients)) return '<p>No clients yet.</p>';
 
+<<<<<<< HEAD
 $grid_style = sprintf(
   'display:grid;grid-template-columns:repeat(%d, minmax(0,1fr));gap:16px;',
   $columns
@@ -205,6 +214,11 @@ $grid_style = sprintf(
 
     ob_start(); ?>
     <div class="kcfh-grid-wrap">
+=======
+    $grid_style = sprintf('grid-template-columns:repeat(%d, minmax(0,1fr));', $columns);
+
+    ob_start(); ?>
+>>>>>>> f2c7e07ab866a5d4cf98d2b7c8baa5003f3c0c52
     <div class="kcfh-stream-grid" style="<?= esc_attr($grid_style) ?>">
       <?php foreach ($clients as $p):
         $name         = get_the_title($p);
@@ -246,7 +260,10 @@ $grid_style = sprintf(
         </a>
       <?php endforeach; ?>
     </div>
+<<<<<<< HEAD
 </div>
+=======
+>>>>>>> f2c7e07ab866a5d4cf98d2b7c8baa5003f3c0c52
     <?php
     return ob_get_clean();
 }
