@@ -35,6 +35,8 @@ class Asset_Service {
         $token_id     = defined('MUX_TOKEN_ID')     ? MUX_TOKEN_ID     : '';
         $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
 
+        
+
         if (!$token_id || !$token_secret) {
             return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
         }
@@ -195,6 +197,64 @@ class Asset_Service {
     return $asset;
 }
 
+public static function get_asset($asset_id, $cache_ttl = 300) {
+    $asset_id = sanitize_text_field($asset_id);
+    if (!$asset_id) {
+        return new \WP_Error('kcfh_mux_assetid', 'Missing Mux Asset ID.');
+    }
+
+    $token_id     = defined('MUX_TOKEN_ID')     ? MUX_TOKEN_ID     : '';
+    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    if (!$token_id || !$token_secret) {
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured.');
+    }
+
+    $cache_key = KCFH_STREAMING_CACHE_PREFIX . 'asset_' . $asset_id;
+    if ($cache_ttl > 0) {
+        $cached = get_transient($cache_key);
+        if ($cached !== false) return $cached;
+    }
+
+    $url  = self::API_BASE . '/assets/' . rawurlencode($asset_id);
+    $resp = wp_remote_get($url, [
+        'headers' => [
+            'Authorization' => 'Basic ' . base64_encode($token_id . ':' . $token_secret),
+            'Accept'        => 'application/json',
+        ],
+        'timeout' => 20,
+    ]);
+
+    if (is_wp_error($resp)) return $resp;
+
+    $code = wp_remote_retrieve_response_code($resp);
+    $body = wp_remote_retrieve_body($resp);
+    if ($code < 200 || $code >= 300) {
+        return new \WP_Error('kcfh_mux_http', 'Mux API HTTP ' . $code . ': ' . $body);
+    }
+
+    $json = json_decode($body, true);
+    if (!is_array($json) || empty($json['data'])) {
+        return new \WP_Error('kcfh_mux_json', 'Unexpected Mux response.');
+    }
+
+    // Normalize minimal fields we use elsewhere
+    $a = $json['data'];
+    $normalized = [
+        'id'           => isset($a['id']) ? sanitize_text_field($a['id']) : '',
+        'status'       => isset($a['status']) ? sanitize_text_field($a['status']) : '',
+        'created_at'   => isset($a['created_at']) ? sanitize_text_field($a['created_at']) : '',
+        'title'        => isset($a['title']) ? sanitize_text_field($a['title']) : '',
+        'passthrough'  => isset($a['passthrough']) ? sanitize_text_field($a['passthrough']) : '',
+        'external_id'  => isset($a['external_id']) ? sanitize_text_field($a['external_id']) : '',
+        'playback_ids' => (isset($a['playback_ids']) && is_array($a['playback_ids'])) ? $a['playback_ids'] : [],
+    ];
+
+    if ($cache_ttl > 0) {
+        set_transient($cache_key, $normalized, $cache_ttl);
+    }
+
+    return $normalized;
+}
 
 
 }

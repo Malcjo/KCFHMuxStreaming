@@ -39,23 +39,106 @@ class CPT_Client {
     $dob  = get_post_meta($post->ID, '_kcfh_dob', true);
     $dod  = get_post_meta($post->ID, '_kcfh_dod', true);
     $asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
+    
+    
+    ?>
 
-    echo '<style>.kcfh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:800px}</style>';
-    echo '<div class="kcfh-grid">';
-    echo '<p><label>Date of Birth<br><input type="date" name="kcfh_dob" value="'.esc_attr($dob).'"></label></p>';
-    echo '<p><label>Date of Death<br><input type="date" name="kcfh_dod" value="'.esc_attr($dod).'"></label></p>';
-    echo '<p><label>Primary VOD Asset ID<br><input type="text" name="kcfh_asset_id" value="'.esc_attr($asset_id).'" class="regular-text"></label><br><small>Paste a Mux Asset ID you want as the default VOD.</small></p>';
-    echo '</div>';
-    echo '<p><small>Use the Featured Image box for the profile photo.</small></p>';
+    <style>
+      .kcfh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:800px}
+    </style>
+
+    <div class="kcfh-grid">
+      <p>
+        <label for="kcfh_dob">Date of Birth</label><br>
+        <input type="date" id="kcfh_dob" name="kcfh_dob" value="<?= esc_attr($dob); ?>">
+      </p>
+
+      <p>
+        <label for="kcfh_dod">Date of Death</label><br>
+        <input type="date" id="kcfh_dod" name="kcfh_dod" value="<?= esc_attr($dod); ?>">
+      </p>
+
+<?php
+  // Current selection
+  $current_asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
+
+  // Pull recent ready assets from Mux (for labels)
+  $result = \KCFH\Streaming\Asset_Service::fetch_assets([
+    'limit'     => 100,
+    'order'     => 'created_at',
+    'direction' => 'desc',
+    'status'    => 'ready',
+  ], 60);
+
+  $assets = (!is_wp_error($result) && !empty($result['assets'])) ? $result['assets'] : [];
+
+  // Map of asset_id => client_id for already-assigned assets
+  $assigned_ids = [];
+  $assigned_posts = get_posts([
+    'post_type'      => self::POST_TYPE,
+    'posts_per_page' => -1,
+    'fields'         => 'ids',
+    'no_found_rows'  => true,
+    'meta_query'     => [[ 'key' => '_kcfh_asset_id', 'compare' => 'EXISTS' ]],
+  ]);
+  foreach ($assigned_posts as $cid) {
+    $aid = get_post_meta($cid, '_kcfh_asset_id', true);
+    if ($aid) $assigned_ids[$aid] = (int)$cid;
+  }
+?>
+<p>
+  <label for="kcfh_asset_id">Primary VOD Asset</label><br>
+  <select id="kcfh_asset_id" name="kcfh_asset_id" class="widefat">
+    <option value="">— Unassigned —</option>
+    <?php if (empty($assets)): ?>
+      <!-- No assets (or no creds). Keep just the Unassigned option. -->
+    <?php else: ?>
+      <?php foreach ($assets as $a):
+        $aid   = esc_attr($a['id']);
+        $title = !empty($a['title']) ? $a['title']
+                : (!empty($a['passthrough']) ? $a['passthrough'] : ('Asset ' . $a['id']));
+        $label = esc_html($title);
+        $selected = selected($current_asset_id, $a['id'], false);
+        $assigned_elsewhere = isset($assigned_ids[$a['id']]) && ($assigned_ids[$a['id']] !== (int)$post->ID);
+        if ($assigned_elsewhere) continue; // hide assets already tied to other clients
+      ?>
+        <option value="<?= $aid ?>" <?= $selected ?>><?= $label ?></option>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </select>
+  <br><small>Select a Mux asset by name; we’ll save the Asset ID and pull playback/meta automatically.</small>
+</p>
+    </div>
+
+    <p><small>Use the Featured Image box for the profile photo.</small></p>
+    <?php
 
     $playback   = get_post_meta($post->ID, '_kcfh_playback_id', true);
     $vod_title  = get_post_meta($post->ID, '_kcfh_vod_title', true);
     $ext_id     = get_post_meta($post->ID, '_kcfh_external_id', true);
 
-    echo '<hr><h3>Assigned VOD</h3>';
-    echo '<p><label>VOD Title<br><input type="text" value="'.esc_attr($vod_title).'" class="regular-text" disabled></label></p>';
-    echo '<p><label>Playback ID (for player)<br><input type="text" value="'.esc_attr($playback).'" class="regular-text" disabled></label></p>';
-    echo '<p><label>External ID (Mux meta)<br><input type="text" value="'.esc_attr($ext_id).'" class="regular-text" disabled></label></p>';
+    ?>
+    <hr>
+    <h3>Assigned VOD</h3>
+    <p>
+      <label>
+        VOD Title<br>
+        <input type="text" value="<?= esc_attr($vod_title); ?>" class="regular-text" disabled>
+      </label>
+    </p>
+    <p>
+      <label>
+        Playback ID (for player)<br>
+        <input type="text" value="<?= esc_attr($playback) ?>" class="regular-text" disabled>
+      </label>
+    </p>
+    <p>
+      <label>
+        External ID (Mux meta)<br>
+        <input type="text" value="<?= esc_attr($ext_id) ?>" class="regular-text" disabled>
+      </label>
+    </p>
+    <?php
 
     if ($playback) {
         $thumb = esc_url(add_query_arg(['width'=>480,'height'=>270,'time'=>2,'fit_mode'=>'smartcrop'], "https://image.mux.com/$playback/thumbnail.jpg"));
@@ -64,16 +147,75 @@ class CPT_Client {
 
   }
 
-  public static function save_meta($post_id) {
-    if (!isset($_POST['kcfh_client_nonce']) || !wp_verify_nonce($_POST['kcfh_client_nonce'], 'kcfh_client_save')) return;
-    if (!current_user_can('edit_post', $post_id)) return;
+public static function save_meta($post_id) {
+  if (!isset($_POST['kcfh_client_nonce']) || !wp_verify_nonce($_POST['kcfh_client_nonce'], 'kcfh_client_save')) return;
+  if (!current_user_can('edit_post', $post_id)) return;
+  if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) return;
 
-    $dob = isset($_POST['kcfh_dob']) ? sanitize_text_field($_POST['kcfh_dob']) : '';
-    $dod = isset($_POST['kcfh_dod']) ? sanitize_text_field($_POST['kcfh_dod']) : '';
-    $asset_id = isset($_POST['kcfh_asset_id']) ? sanitize_text_field($_POST['kcfh_asset_id']) : '';
+  $dob = isset($_POST['kcfh_dob']) ? sanitize_text_field($_POST['kcfh_dob']) : '';
+  $dod = isset($_POST['kcfh_dod']) ? sanitize_text_field($_POST['kcfh_dod']) : '';
+  update_post_meta($post_id, '_kcfh_dob', $dob);
+  update_post_meta($post_id, '_kcfh_dod', $dod);
 
-    update_post_meta($post_id, '_kcfh_dob', $dob);
-    update_post_meta($post_id, '_kcfh_dod', $dod);
-    update_post_meta($post_id, '_kcfh_asset_id', $asset_id);
+  // VOD dropdown selection
+  $new_asset_id = isset($_POST['kcfh_asset_id']) ? sanitize_text_field($_POST['kcfh_asset_id']) : '';
+  $old_asset_id = get_post_meta($post_id, '_kcfh_asset_id', true);
+
+if ($new_asset_id === '') {
+    // Unassign
+    delete_post_meta($post_id, '_kcfh_asset_id');
+    delete_post_meta($post_id, '_kcfh_playback_id');
+    delete_post_meta($post_id, '_kcfh_vod_title');
+    delete_post_meta($post_id, '_kcfh_external_id');
+  } elseif ($new_asset_id !== $old_asset_id) {
+    // Make it exclusive: unassign this asset from other clients
+    $others = get_posts([
+      'post_type'      => self::POST_TYPE,
+      'posts_per_page' => -1,
+      'fields'         => 'ids',
+      'no_found_rows'  => true,
+      'post__not_in'   => [$post_id],
+      'meta_query'     => [[ 'key' => '_kcfh_asset_id', 'value' => $new_asset_id, 'compare' => '=' ]],
+    ]);
+    foreach ($others as $oid) {
+      delete_post_meta($oid, '_kcfh_asset_id');
+      delete_post_meta($oid, '_kcfh_playback_id');
+      delete_post_meta($oid, '_kcfh_vod_title');
+      delete_post_meta($oid, '_kcfh_external_id');
+    }
+
+    // Fetch asset details from Mux for playback/meta
+    $asset = \KCFH\Streaming\Asset_Service::get_asset($new_asset_id, 120);
+    if (!is_wp_error($asset)) {
+      $playback = \KCFH\Streaming\Asset_Service::first_public_playback_id($asset);
+      $title    = !empty($asset['title']) ? $asset['title']
+                 : (!empty($asset['passthrough']) ? $asset['passthrough'] : '');
+      $ext_id   = !empty($asset['external_id']) ? $asset['external_id'] : '';
+
+      update_post_meta($post_id, '_kcfh_asset_id',     $new_asset_id);
+      if ($playback) update_post_meta($post_id, '_kcfh_playback_id', $playback);
+      update_post_meta($post_id, '_kcfh_vod_title',   sanitize_text_field($title));
+      update_post_meta($post_id, '_kcfh_external_id', sanitize_text_field($ext_id));
+    } else {
+      // Save at least the chosen ID; you can refresh meta later
+      update_post_meta($post_id, '_kcfh_asset_id', $new_asset_id);
+    }
   }
 }
+
+}
+
+ /* new assingment
+  if ($new_asset_id !== $old_asset_id) {
+    $res = \KCFH\Streaming\Core::assign_vod_to_client($post_id, $new_asset_id);
+    if (is_wp_error($res)) {
+      error_log('[KCFH] VOD assign via client save failed: ' . $res->get_error_message());
+    }
+  }
+*/
+
+/* old assignment
+
+
+
+*/
