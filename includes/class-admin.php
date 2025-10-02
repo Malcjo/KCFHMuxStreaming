@@ -158,6 +158,7 @@ class Admin_UI {
         
         if (!current_user_can('manage_options')) wp_die('Permission denied');
 
+        /*
         $notice = isset($_GET['kcfh_notice']) ? sanitize_text_field($_GET['kcfh_notice']) : '';
         if ($notice) {
             echo '<div class="notice notice-success"><p>';
@@ -167,10 +168,23 @@ class Admin_UI {
                 ($notice === 'badreq'     ? 'Bad request.' : '')));
             echo '</p></div>';
         }
+            */
 
         $res = Asset_Service::fetch_assets(['limit'=>50, 'order'=>'created_at', 'direction'=>'desc', 'status'=>'ready'], 30);
-        echo '<div class="wrap"><h1>VOD Manager</h1>';
-        if (is_wp_error($res)) { echo '<p style="color:#c00">'.esc_html($res->get_error_message()).'</p></div>'; return; }
+        ?>
+          <div class="wrap">
+            <h1>VOD Manager</h1>
+              <?php
+              if (is_wp_error($res)) 
+                { 
+                  ?>
+                  <p style="color:#c00">
+                    <?php esc_html($res->get_error_message())?>
+                  </p>
+                </div>
+                  <?php
+                  return; 
+                }
 
         $assets  = $res['assets'];
         $clients = get_posts(['post_type'=>CPT_Client::POST_TYPE, 'numberposts'=>-1, 'orderby'=>'title', 'order'=>'ASC']);
@@ -179,10 +193,23 @@ class Admin_UI {
         $client_vod_map = [];
         foreach ($clients as $c) $client_vod_map[$c->ID] = get_post_meta($c->ID, '_kcfh_asset_id', true);
 
-        echo '<table class="widefat striped"><thead><tr>';
-        echo '<th>Asset ID</th><th>Created</th><th>Title</th><th>Creator ID</th><th>External ID</th><th>Preview</th><th>Assign to Client</th>';
-        echo '</tr></thead><tbody>';
+        ?>
+        
+        <table class="widefat striped">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Created</th>
+              <th>Title</th>
+              <th>Creator ID</th>
+              <th>External ID</th>
+              <th>Preview</th>
+              <th>Assign to Client</th>
+            </tr>
+          </thead>
+        <tbody>
 
+        <?php
         foreach ($assets as $a) {
             $created = !empty($a['created_at'])
             ? date_i18n(get_option('date_format').' '.get_option('time_format'), strtotime($a['created_at']))
