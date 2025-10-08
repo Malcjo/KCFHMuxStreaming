@@ -161,7 +161,8 @@ public static function save_meta($post_id) {
   $new_asset_id = isset($_POST['kcfh_asset_id']) ? sanitize_text_field($_POST['kcfh_asset_id']) : '';
   $old_asset_id = get_post_meta($post_id, '_kcfh_asset_id', true);
 
-  if ($new_asset_id === '') {
+if ($new_asset_id === '') {
+
     // Unassign
     delete_post_meta($post_id, '_kcfh_asset_id');
     delete_post_meta($post_id, '_kcfh_playback_id');
@@ -204,3 +205,20 @@ public static function save_meta($post_id) {
 }
 
 }
+
+
+ /* new assingment
+  if ($new_asset_id !== $old_asset_id) {
+    $res = \KCFH\Streaming\Core::assign_vod_to_client($post_id, $new_asset_id);
+    if (is_wp_error($res)) {
+      error_log('[KCFH] VOD assign via client save failed: ' . $res->get_error_message());
+    }
+  }
+*/
+
+/* old assignment
+
+
+
+*/
+

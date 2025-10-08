@@ -35,6 +35,8 @@ class Asset_Service {
         $token_id     = defined('MUX_TOKEN_ID')     ? MUX_TOKEN_ID     : '';
         $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
 
+        
+
         if (!$token_id || !$token_secret) {
             return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
         }
