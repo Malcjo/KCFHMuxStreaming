@@ -119,6 +119,10 @@ class Shortcode_Gallery {
     public static function render_single($playback_id, $poster_fallback) {
         if (!$playback_id) { return '<p>Missing playback ID.</p>'; }
 
+        // If the clicked playback id equals the saved live playback id → render as live
+        $live_playback  = get_option(Admin_UI::OPT_LIVE_PLAYBACK, '');
+        $is_live_single = ($live_playback && hash_equals($live_playback, $playback_id));
+
         $back_url = esc_url(remove_query_arg('kcfh_pb'));
         $poster   = self::thumbnail_url($playback_id, 1280, 720, 2);
 
@@ -127,10 +131,10 @@ class Shortcode_Gallery {
         <div class="kcfh-single">
         <a class="kcfh-back" href="<?= $back_url ?>">← Back</a>
         <mux-player
-            playback-id="<?= esc_attr($playback_id) ?>"
-            stream-type="on-demand"
+            playback-id="<?php esc_attr($playback_id) ?>"
+            stream-type="<?php $is_live_single ? 'live' : 'on-demand' ?>"
             controls
-            poster="<?= esc_url($poster) ?>">
+            <?php $poster ? 'poster="'.esc_url($poster).'"' : '' ?>>
         </mux-player>
         </div>
         <?php

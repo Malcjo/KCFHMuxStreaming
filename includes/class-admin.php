@@ -6,7 +6,18 @@ class Admin_UI {
   const OPT_LIVE_CLIENT = 'kcfh_live_client_id';
   const OPT_LIVE_PLAYBACK = 'kcfh_live_playback_id';
 
+  public static function boot(){
+    //register UI
+    add_action('admin_menu', [__CLASS__, 'register_menus']);
+
+
+    //requests adn functions
+    add_action('admin_post_kcfh_set_live',           [__CLASS__, 'handle_set_live']);
+    add_action('admin_post_kcfh_save_live_settings', [__CLASS__, 'handle_save_live_settings']);
+    add_action('admin_post_kcfh_assign_vod',         ['KCFH\Streaming\Utility_Admin', 'handle_assign_vod']);
+  }
   public static function register_menus() {
+    echo 'register Menus';
     add_menu_page(
         'KCFH Streaming', 
         'KCFH Streaming', 
@@ -61,9 +72,9 @@ class Admin_UI {
 
 
     // Actions
-    add_action('admin_post_kcfh_set_live', [__CLASS__, 'handle_set_live']);
-    add_action('admin_post_kcfh_assign_vod', [__CLASS__, 'handle_assign_vod']);
-    add_action('admin_post_kcfh_save_live_settings', [__CLASS__, 'handle_save_live_settings']);
+    //add_action('admin_post_kcfh_set_live', [__CLASS__, 'handle_set_live']);
+    //add_action('admin_post_kcfh_assign_vod', [__CLASS__, 'handle_assign_vod']);
+    //add_action('admin_post_kcfh_save_live_settings', [__CLASS__, 'handle_save_live_settings']);
   }
 
   /** ---------- Dashboard: Clients list ---------- */
@@ -299,8 +310,75 @@ public static function handle_assign_vod() {
 }
 
 
+public static function render_live_settings() {
+  if (!current_user_can('manage_options')) wp_die('Nope');
+  $live_playback = get_option(self::OPT_LIVE_PLAYBACK, '');
+  $live_client   = (int) get_option(self::OPT_LIVE_CLIENT, 0);
+
+  // Read from wp-config (do NOT store these in DB)
+  $rtmp_url   = defined('KCFH_LIVE_RTMP_URL')   ? KCFH_LIVE_RTMP_URL   : '';
+  $stream_key = defined('KCFH_LIVE_STREAM_KEY') ? KCFH_LIVE_STREAM_KEY : '';
+  $stream_id  = defined('KCFH_LIVE_STREAM_ID')  ? KCFH_LIVE_STREAM_ID  : '';
+
+  echo '<div class="wrap"><h1>Live Settings</h1>';
+
+  if (!$rtmp_url || !$stream_key) {
+    echo '<div class="notice notice-error"><p><strong>Missing RTMP URL or Stream Key.</strong> Add KCFH_LIVE_RTMP_URL and KCFH_LIVE_STREAM_KEY to <code>wp-config.php</code>.</p></div>';
+  }
+
+  // DB-backed: Live Playback ID
+  echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+  wp_nonce_field('kcfh_save_live_settings');
+  echo '<input type="hidden" name="action" value="kcfh_save_live_settings">';
+
+  echo '<table class="form-table"><tbody>';
+
+  echo '<tr><th scope="row">Live Playback ID</th><td>';
+  echo '<input type="text" name="kcfh_live_playback_id" value="'.esc_attr($live_playback).'" class="regular-text">';
+  echo '<p class="description">Playback ID from the <em>Live Stream</em> in Mux (not a VOD asset). This powers the public live player.</p>';
+  echo '</td></tr>';
+
+  echo '<tr><th scope="row">Currently Live Client</th><td>';
+  echo $live_client ? esc_html(get_the_title($live_client)).' (#'.$live_client.')' : 'None';
+  echo '<p class="description">Use “Set Live / Unset Live” on the Dashboard. Only one client can be Live.</p>';
+  echo '</td></tr>';
+
+  echo '</tbody></table>';
+  submit_button('Save Settings');
+  echo '</form>';
+
+  // Read-only Larix setup
+  echo '<h2>Larix Broadcaster Setup</h2>';
+  echo '<table class="form-table"><tbody>';
+
+  echo '<tr><th scope="row">RTMP URL</th><td>';
+  echo $rtmp_url ? '<code>'.esc_html($rtmp_url).'</code>' : '<em>Not set</em>';
+  echo '<p class="description">Larix → Settings → Connections → New → URL.</p>';
+  echo '</td></tr>';
+
+  echo '<tr><th scope="row">Stream Key</th><td>';
+  if ($stream_key) {
+    $masked = str_repeat('•', max(0, strlen($stream_key) - 6)) . substr($stream_key, -6);
+    echo '<input type="text" readonly value="'.esc_attr($masked).'" class="regular-text" style="max-width:360px;">';
+    echo '<p class="description">Kept only in <code>wp-config.php</code>. Do not share.</p>';
+  } else {
+    echo '<em>Not set</em>';
+  }
+  echo '</td></tr>';
+
+  echo '<tr><th scope="row">Live Stream ID</th><td>';
+  echo $stream_id ? '<code>'.esc_html($stream_id).'</code>' : '<em>Optional</em>';
+  echo '<p class="description">Optional. Useful for future API automation.</p>';
+  echo '</td></tr>';
+
+  echo '</tbody></table>';
+  echo '</div>';
+}
+
+
 
   /** ---------- Live Settings ---------- */
+  /*
   public static function render_live_settings() {
     if (!current_user_can('manage_options')) wp_die('Nope');
     $live_playback = get_option(self::OPT_LIVE_PLAYBACK, '');
@@ -326,6 +404,8 @@ public static function handle_assign_vod() {
     submit_button('Save Settings');
     echo '</form></div>';
   }
+
+  */
 
   public static function handle_save_live_settings() {
     if (!current_user_can('manage_options')) wp_die('Nope');
