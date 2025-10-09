@@ -146,6 +146,31 @@ class Admin_UI {
 
     // Only one live: store the chosen ID (0 unsets)
     update_option(self::OPT_LIVE_CLIENT, $client_id);
+
+    // If you defined KCFH_LIVE_STREAM_ID in wp-config, tag future assets with this client id
+    // after you Set Live (e.g., in Admin_UI::handle_set_live(), after updating kcfh_live_client_id)
+    $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '';
+    if ($live_stream_id) {
+      // choose your window (e.g., 600s = 10 min)
+      $window_seconds = 600;
+
+      $resp = \KCFH\Streaming\Live_Service::update_live_stream($live_stream_id, [
+        'reconnect_window' => $window_seconds,
+        // optional but very useful: tag future VODs to this client
+        'passthrough' => 'client-' . (int)$client_id,
+        'new_asset_settings' => [
+          'playback_policy' => ['public'],
+          'passthrough'     => 'client-' . (int)$client_id,
+        ],
+        // optional: show an image while disconnected during the window
+        // 'reconnect_slate_url' => 'https://your-cdn.example.com/slate.jpg',
+      ]);
+      if (is_wp_error($resp)) {
+        error_log('[KCFH] Mux update_live_stream failed: ' . $resp->get_error_message());
+      }
+    }
+
+
     wp_safe_redirect(admin_url('admin.php?page=kcfh_streaming'));
     exit;
   }
