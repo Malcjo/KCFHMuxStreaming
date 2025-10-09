@@ -42,6 +42,8 @@ require_once KCFH_STREAMING_DIR . 'includes/class-utility-admin.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-utility-mux.php'; // optional, if you use View
 require_once KCFH_STREAMING_DIR . 'includes/class-utility-debug.php';
 
+require_once KCFH_STREAMING_DIR . 'includes/class-live-service.php'; //editing the live stream asset
+
 
 
 add_action('plugins_loaded', function () {
