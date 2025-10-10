@@ -13,6 +13,22 @@ class Live_Service {
     ];
   }
 
+    public static function get_live_stream($live_stream_id) {
+    $url = "https://api.mux.com/video/v1/live-streams/" . rawurlencode($live_stream_id);
+    $res = wp_remote_get($url, [
+      'headers' => self::auth_headers(),
+      'timeout' => 20,
+    ]);
+    if (is_wp_error($res)) return $res;
+    $code = wp_remote_retrieve_response_code($res);
+    if ($code < 200 || $code >= 300) {
+      return new \WP_Error('mux_http', 'Mux GET live stream failed ('.$code.'): '. wp_remote_retrieve_body($res));
+    }
+    $body = json_decode(wp_remote_retrieve_body($res), true);
+    return $body['data'] ?? [];
+  }
+
+
   public static function update_live_stream($live_stream_id, array $fields) {
     $url = "https://api.mux.com/video/v1/live-streams/" . rawurlencode($live_stream_id);
     $res = wp_remote_request($url, [

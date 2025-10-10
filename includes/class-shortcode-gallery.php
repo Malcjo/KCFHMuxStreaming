@@ -123,6 +123,7 @@ class Shortcode_Gallery {
         $live_playback  = get_option(Admin_UI::OPT_LIVE_PLAYBACK, '');
         $is_live_single = ($live_playback && hash_equals($live_playback, $playback_id));
 
+        //error_log('[KCFH] single playback=' . $playback_id . ' live=' . $live_playback . ' is_live=' . ($is_live_single?'1':'0'));
         $back_url = esc_url(remove_query_arg('kcfh_pb'));
         $poster   = self::thumbnail_url($playback_id, 1280, 720, 2);
 

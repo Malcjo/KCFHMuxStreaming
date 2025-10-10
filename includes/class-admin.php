@@ -15,6 +15,8 @@ class Admin_UI {
     add_action('admin_post_kcfh_set_live',           [__CLASS__, 'handle_set_live']);
     add_action('admin_post_kcfh_save_live_settings', [__CLASS__, 'handle_save_live_settings']);
     add_action('admin_post_kcfh_assign_vod',         ['KCFH\Streaming\Utility_Admin', 'handle_assign_vod']);
+    add_action('admin_post_kcfh_set_reconnect_window', [__CLASS__, 'handle_set_reconnect_window']);
+
   }
   public static function register_menus() {
     echo 'register Menus';
@@ -156,6 +158,7 @@ class Admin_UI {
 
       $resp = \KCFH\Streaming\Live_Service::update_live_stream($live_stream_id, [
         'reconnect_window' => $window_seconds,
+        'use_slate_for_standard_latency' => 'true',
         // optional but very useful: tag future VODs to this client
         'passthrough' => 'client-' . (int)$client_id,
         'new_asset_settings' => [
@@ -369,7 +372,67 @@ public static function render_live_settings() {
 
   echo '</tbody></table>';
   echo '</div>';
+
+  // After your existing settings form
+  $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '';
+  if ($live_stream_id && class_exists('\KCFH\Streaming\Live_Service')) {
+    $ls = \KCFH\Streaming\Live_Service::get_live_stream($live_stream_id);
+    $latency = is_wp_error($ls) ? '—' : (!empty($ls['latency_mode']) ? $ls['latency_mode'] : 'standard');
+    $reconn  = is_wp_error($ls) ? '—' : (isset($ls['reconnect_window']) ? (int)$ls['reconnect_window'] : 0);
+
+    echo '<h2>Mux Live Stream Status</h2>';
+    if (is_wp_error($ls)) {
+      echo '<div class="notice notice-error"><p>Could not fetch live stream: '.esc_html($ls->get_error_message()).'</p></div>';
+    } else {
+      echo '<table class="form-table"><tbody>';
+      echo '<tr><th scope="row">Live Stream ID</th><td><code>'.esc_html($live_stream_id).'</code></td></tr>';
+      echo '<tr><th scope="row">Latency Mode</th><td><code>'.esc_html($latency).'</code></td></tr>';
+      echo '<tr><th scope="row">Reconnect Window</th><td><code>'.esc_html($reconn).'</code> seconds</td></tr>';
+      echo '</tbody></table>';
+    }
+
+    // Quick form to apply a new reconnect_window
+    echo '<h3>Set Reconnect Window</h3>';
+    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+    wp_nonce_field('kcfh_set_reconnect_window');
+    echo '<input type="hidden" name="action" value="kcfh_set_reconnect_window">';
+    echo '<input type="number" name="window" min="0" max="1800" step="1" value="'. esc_attr( max(0,(int)$reconn) ) .'" /> seconds ';
+    submit_button('Apply', 'secondary', '', false);
+    echo '</form>';
+  } else {
+    echo '<div class="notice notice-warning"><p>Define <code>KCFH_LIVE_STREAM_ID</code> in <code>wp-config.php</code> to manage reconnect window here.</p></div>';
+  }
+
+
 }
+
+public static function handle_set_reconnect_window() {
+  if (!current_user_can('manage_options')) wp_die('Nope');
+  check_admin_referer('kcfh_set_reconnect_window');
+
+  $win = isset($_POST['window']) ? (int) $_POST['window'] : 0;
+  $win = max(0, min(1800, $win)); // Mux allows 0..1800 seconds
+
+  $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '';
+  if ($live_stream_id && class_exists('\KCFH\Streaming\Live_Service')) {
+    $resp = \KCFH\Streaming\Live_Service::update_live_stream($live_stream_id, [
+      'reconnect_window' => $win,
+      // (Optional) keep these if you want to also tag future assets to the current live client:
+      // 'passthrough' => 'client-' . (int) get_option(self::OPT_LIVE_CLIENT, 0),
+      // 'new_asset_settings' => [
+      //   'playback_policy' => ['public'],
+      //   'passthrough'     => 'client-' . (int) get_option(self::OPT_LIVE_CLIENT, 0),
+      // ]
+    ]);
+    if (is_wp_error($resp)) {
+      wp_safe_redirect(admin_url('admin.php?page=kcfh_live_settings&updated=0&kcfh_msg='.rawurlencode($resp->get_error_message())));
+      exit;
+    }
+  }
+  wp_safe_redirect(admin_url('admin.php?page=kcfh_live_settings&updated=1'));
+  exit;
+}
+
 
 
 
