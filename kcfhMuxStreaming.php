@@ -44,6 +44,13 @@ require_once KCFH_STREAMING_DIR . 'includes/class-utility-debug.php';
 
 require_once KCFH_STREAMING_DIR . 'includes/class-live-service.php'; //editing the live stream asset
 
+require_once KCFH_STREAMING_DIR. '/includes/class-live-scheduler.php';
+
+
+
+
+//Hook the scheduler on init so cron hooks & the 5-min tick are registered.
+add_action('init', ['KCFH\Streaming\Live_Scheduler', 'bootstrap']);
 
 
 add_action('plugins_loaded', function () {
@@ -57,6 +64,7 @@ add_action('plugins_loaded', function () {
 });
 
 add_action('utilities_loaded', function(){
+  //\KCFH\STREAMING\Live_Scheduler::bootstrap();
   \KCFH\Streaming\Utility_Admin::init();
   \KCFH\Streaming\Utility_Mux::init();
 

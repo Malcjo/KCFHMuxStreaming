@@ -3,8 +3,8 @@ namespace KCFH\Streaming;
 if (!defined('ABSPATH')) exit;
 
 class Admin_UI {
-  const OPT_LIVE_CLIENT = 'kcfh_live_client_id';
-  const OPT_LIVE_PLAYBACK = 'kcfh_live_playback_id';
+  public const OPT_LIVE_CLIENT = 'kcfh_live_client_id';
+  public const OPT_LIVE_PLAYBACK = 'kcfh_live_playback_id';
 
   public static function boot(){
     //register UI
