@@ -116,31 +116,69 @@ class Shortcode_Gallery {
         return self::render_mux_grid($assets, $columns, $poster_fallback, $showtitle, $detail_page, $next);
     }
 
-    public static function render_single($playback_id, $poster_fallback) {
-        if (!$playback_id) { return '<p>Missing playback ID.</p>'; }
+public static function render_single($playback_id, $poster_fallback) {
+    if (!$playback_id) { return '<p>Missing playback ID.</p>'; }
 
-        // If the clicked playback id equals the saved live playback id → render as live
-        $live_playback  = get_option(Admin_UI::OPT_LIVE_PLAYBACK, '');
-        $is_live_single = ($live_playback && hash_equals($live_playback, $playback_id));
+    $live_playback  = get_option(Admin_UI::OPT_LIVE_PLAYBACK, '');
+    $is_live_single = ($live_playback && hash_equals($live_playback, $playback_id));
 
-        //error_log('[KCFH] single playback=' . $playback_id . ' live=' . $live_playback . ' is_live=' . ($is_live_single?'1':'0'));
-        $back_url = esc_url(remove_query_arg('kcfh_pb'));
-        $poster   = self::thumbnail_url($playback_id, 1280, 720, 2);
+    $back_url = esc_url(remove_query_arg('kcfh_pb'));
+    // Only use poster for VOD; for LIVE let Mux show the offline slate if needed
+    $poster   = !$is_live_single ? self::thumbnail_url($playback_id, 1280, 720, 2) : '';
 
-        ob_start(); ?>
-        <style>figure#FrontImage{display:none !important;}</style>
-        <div class="kcfh-single">
-        <a class="kcfh-back" href="<?= $back_url ?>">← Back</a>
-        <mux-player
-            playback-id="<?php esc_attr($playback_id) ?>"
-            stream-type="<?php $is_live_single ? 'live' : 'on-demand' ?>"
-            controls
-            <?php $poster ? 'poster="'.esc_url($poster).'"' : '' ?>>
-        </mux-player>
-        </div>
-        <?php
-        return ob_get_clean();
-    }
+    ob_start(); ?>
+    <style>
+      figure#FrontImage{display:none !important;}
+      mux-player{display:block;width:100%;aspect-ratio:16/9;min-height:320px}
+    </style>
+    <div class="kcfh-single">
+      <a class="kcfh-back" href="<?= $back_url ?>">← Back</a>
+
+      <mux-player
+        playback-id="<?= esc_attr($playback_id) ?>"
+        stream-type="<?= $is_live_single ? 'live' : 'on-demand' ?>"
+        controls
+        muted
+        autoplay
+        playsinline
+        <?= $poster ? 'poster="'.esc_url($poster).'"' : '' ?>>
+      </mux-player>
+
+      <!-- Load mux-player as an ES module (bypass theme optimizers) -->
+      <script type="module" src="https://unpkg.com/@mux/mux-player@2"></script>
+
+      <!-- Tiny logger + robust fallback to iframe if the component doesn't upgrade -->
+      <script type="module">
+        (async () => {
+          const el = document.querySelector('mux-player');
+          if (!el) return;
+
+          ['loadstart','loadedmetadata','loadeddata','canplay','playing','waiting','stalled','error']
+            .forEach(ev => el.addEventListener(ev, () => console.log('[mux]', ev, el.error || '')));
+
+          try {
+            await customElements.whenDefined('mux-player');
+            // give it a moment to upgrade and layout
+            await new Promise(r => setTimeout(r, 800));
+            if (!el.shadowRoot) throw new Error('mux-player did not upgrade');
+            console.log('[KCFH mux-player] upgraded');
+          } catch (err) {
+            console.warn('[KCFH mux-player] fallback → iframe:', err?.message || err);
+            const pid = el.getAttribute('playback-id') || '';
+            const i = document.createElement('iframe');
+            i.src = 'https://player.mux.com/' + pid;
+            i.style = 'width:100%;aspect-ratio:16/9;border:none;';
+            i.allow = 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;';
+            i.allowFullscreen = true;
+            el.replaceWith(i);
+          }
+        })();
+      </script>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
 
 public static function render_clients_grid($atts, $columns, $poster_fallback, $search_term_override = null) {
     $live_client_id = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
