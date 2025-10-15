@@ -374,34 +374,22 @@ public static function render_live_settings() {
   echo '</div>';
 
   // After your existing settings form
-  $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '';
-  if ($live_stream_id && class_exists('\KCFH\Streaming\Live_Service')) {
-    $ls = \KCFH\Streaming\Live_Service::get_live_stream($live_stream_id);
-    $latency = is_wp_error($ls) ? '—' : (!empty($ls['latency_mode']) ? $ls['latency_mode'] : 'standard');
-    $reconn  = is_wp_error($ls) ? '—' : (isset($ls['reconnect_window']) ? (int)$ls['reconnect_window'] : 0);
-
-    echo '<h2>Mux Live Stream Status</h2>';
-    if (is_wp_error($ls)) {
-      echo '<div class="notice notice-error"><p>Could not fetch live stream: '.esc_html($ls->get_error_message()).'</p></div>';
-    } else {
-      echo '<table class="form-table"><tbody>';
-      echo '<tr><th scope="row">Live Stream ID</th><td><code>'.esc_html($live_stream_id).'</code></td></tr>';
-      echo '<tr><th scope="row">Latency Mode</th><td><code>'.esc_html($latency).'</code></td></tr>';
-      echo '<tr><th scope="row">Reconnect Window</th><td><code>'.esc_html($reconn).'</code> seconds</td></tr>';
-      echo '</tbody></table>';
-    }
-
-    // Quick form to apply a new reconnect_window
-    echo '<h3>Set Reconnect Window</h3>';
-    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
-    wp_nonce_field('kcfh_set_reconnect_window');
-    echo '<input type="hidden" name="action" value="kcfh_set_reconnect_window">';
-    echo '<input type="number" name="window" min="0" max="1800" step="1" value="'. esc_attr( max(0,(int)$reconn) ) .'" /> seconds ';
-    submit_button('Apply', 'secondary', '', false);
-    echo '</form>';
+$live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '';
+if ($live_stream_id && class_exists('\KCFH\Streaming\Live_Service')) {
+  $ls = \KCFH\Streaming\Live_Service::get_live_stream($live_stream_id);
+  if (is_wp_error($ls)) {
+    echo '<div class="notice notice-error"><p>Could not fetch Mux live stream: '.esc_html($ls->get_error_message()).'</p></div>';
   } else {
-    echo '<div class="notice notice-warning"><p>Define <code>KCFH_LIVE_STREAM_ID</code> in <code>wp-config.php</code> to manage reconnect window here.</p></div>';
+    $latency = !empty($ls['latency_mode']) ? $ls['latency_mode'] : 'standard';
+    $reconn  = isset($ls['reconnect_window']) ? (int)$ls['reconnect_window'] : 0;
+    echo '<h2>Mux Live Stream</h2><table class="form-table"><tbody>';
+    echo '<tr><th>Live Stream ID</th><td><code>'.esc_html($live_stream_id).'</code></td></tr>';
+    echo '<tr><th>Latency Mode</th><td><code>'.esc_html($latency).'</code></td></tr>';
+    echo '<tr><th>Reconnect Window</th><td><code>'.esc_html($reconn).'</code> seconds</td></tr>';
+    echo '</tbody></table>';
   }
+}
+
 
 
 }
