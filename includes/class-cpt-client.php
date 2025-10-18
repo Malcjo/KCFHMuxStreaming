@@ -41,6 +41,33 @@ class CPT_Client {
       self::POST_TYPE, 
       'normal', 
       'high');
+
+      add_meta_box(
+      'kcfh_schedule_debug',
+      'Schedule Debug',
+      function($post){
+        $startUtc = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_START_AT, true);
+        $endUtc   = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_END_AT, true);
+
+        $nextStart = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$post->ID]);
+        $nextEnd   = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$post->ID]);
+
+        echo '<p><strong>Stored UTC</strong><br>';
+        echo 'Start: '.($startUtc ? date_i18n('Y-m-d H:i:s', $startUtc) : '—').' UTC<br>';
+        echo 'End: '.($endUtc ? date_i18n('Y-m-d H:i:s', $endUtc) : '—').' UTC</p>';
+
+        echo '<p><strong>Next scheduled</strong><br>';
+        echo 'Start: '.($nextStart ? date_i18n('Y-m-d H:i:s', $nextStart) : '—').' (site time)<br>';
+        echo 'End: '.($nextEnd ? date_i18n('Y-m-d H:i:s', $nextEnd) : '—').' (site time)</p>';
+
+        $live = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
+        echo '<p><strong>Current Live Client:</strong> '.($live ?: 'none').' </p>';
+      },
+      self::POST_TYPE,
+      'side',
+      'low'
+    );
+
   }
 
   public static function render_meta($post) {
@@ -275,17 +302,27 @@ class CPT_Client {
     // (Re)Schedule start/end one-offs
     \KCFH\Streaming\Live_Scheduler::reschedule_for_client($post_id, $startUtc, $endUtc);
 
-    // Immediate enforcement if we’re already inside window
+    // Immediate enforcement if we’re already at/after start
     $now = time();
-    if ($startUtc && $endUtc && $now >= $startUtc && $now < $endUtc) {
-      \KCFH\Streaming\Live_Scheduler::set_live_client($post_id);
+    $in_window =
+        ($startUtc && $now >= $startUtc) &&
+        (!$endUtc || $now < $endUtc); // end optional
+
+    if ($in_window) {
+        \KCFH\Streaming\Live_Scheduler::set_live_client($post_id);
     } else {
-      // If this client was live but is now out of window, unset (only if it’s the current one)
-      $liveId = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
-      if ($liveId === (int) $post_id) {
-        \KCFH\Streaming\Live_Scheduler::unset_live_if_matches($post_id);
-      }
+        $liveId  = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
+        $outside =
+            ($startUtc && $endUtc && $now >= $endUtc) || // past end
+            ($startUtc && !$endUtc && $now < $startUtc) || // start-only but not started yet
+            (!$startUtc); // no schedule
+
+        if ($liveId === (int) $post_id && $outside) {
+            \KCFH\Streaming\Live_Scheduler::unset_live_if_matches($post_id);
+        }
     }
+
+
   }
 
 

@@ -57,6 +57,7 @@ add_action('plugins_loaded', function () {
     // Init services
     \KCFH\Streaming\CPT_Client::init();
     \KCFH\Streaming\Admin_UI::boot();
+    \KCFH\STREAMING\Live_Scheduler::bootstrap();
     \KCFH\Streaming\Asset_Service::init();
     \KCFH\Streaming\Shortcode_Gallery::init();
     \KCFH\Streaming\Shortcode_Client_Search::init();
@@ -64,7 +65,7 @@ add_action('plugins_loaded', function () {
 });
 
 add_action('utilities_loaded', function(){
-  //\KCFH\STREAMING\Live_Scheduler::bootstrap();
+  //
   \KCFH\Streaming\Utility_Admin::init();
   \KCFH\Streaming\Utility_Mux::init();
 
@@ -78,6 +79,17 @@ add_action('admin_menu', function () {
 
   //\KCFH\Streaming\Admin_UI::register_menus();
 });
+
+add_action('admin_notices', function(){
+    if (!current_user_can('manage_options')) return;
+    $id   = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
+    $nxtS = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$id]);
+    $nxtE = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$id]);
+    echo '<div class="notice notice-info"><p>Live client: '.esc_html($id).
+         ' | Next start: '.($nxtS ? date_i18n('Y-m-d H:i:s', $nxtS) : '—').
+         ' | Next end: '.($nxtE ? date_i18n('Y-m-d H:i:s', $nxtE) : '—').'</p></div>';
+});
+
 
 //add_action('admin_post_kcfh_assign_vod', ['KCFH\Streaming\Utility_Admin', 'handle_assign_vod']);
 //add_action('admin_post_kcfh_assign_vod', ['\\KCFH\\Streaming\\Admin_UI', 'handle_assign_vod']);
@@ -110,6 +122,36 @@ add_action('init', function () {
   }
 */
 });
+
+// 1) Compute status very early so it's available for notices
+add_action('init', function () {
+    $hook = \KCFH\Streaming\Live_Scheduler::HOOK_START;
+    $GLOBALS['kcfh_hook_status'] = has_action($hook) ? 'OK' : 'MISSING';
+}, 1);
+
+// 2) Show an admin notice on every admin page (only for admins)
+add_action('admin_notices', function () {
+    if (!current_user_can('manage_options')) return;
+
+    $status = isset($GLOBALS['kcfh_hook_status']) ? $GLOBALS['kcfh_hook_status'] : 'unknown';
+
+    // If you're on an Edit Client screen, also show its schedule
+    $post_id   = isset($_GET['post']) ? (int) $_GET['post'] : 0;
+    $is_client = $post_id && get_post_type($post_id) === \KCFH\Streaming\CPT_Client::POST_TYPE;
+
+    $extra = '';
+    if ($is_client) {
+        $ns = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$post_id]);
+        $ne = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$post_id]);
+        $extra = ' | Next start: ' . ($ns ? date_i18n('Y-m-d H:i:s', $ns) : '—')
+               . ' | Next end: '   . ($ne ? date_i18n('Y-m-d H:i:s', $ne) : '—');
+    }
+
+    echo '<div class="notice notice-info"><p>KCFH cron hook status: <strong>'
+         . esc_html($status) . '</strong>' . esc_html($extra) . '</p></div>';
+});
+
+
 
 
 

@@ -40,18 +40,29 @@ class Live_Scheduler {
      * Schedule (or clear) the start/end events for a specific client.
      */
     public static function reschedule_for_client($post_id, $startUtc, $endUtc) {
-        // Clear old singles for this client
         wp_clear_scheduled_hook(self::HOOK_START, [$post_id]);
         wp_clear_scheduled_hook(self::HOOK_END,   [$post_id]);
 
-        $now = time();
-        if ($startUtc && $startUtc > $now) {
-            wp_schedule_single_event($startUtc, self::HOOK_START, [$post_id]);
+        $now   = time();
+        $grace = 5; // seconds
+
+        if ($startUtc) {
+            if ($startUtc > ($now + $grace)) {
+                wp_schedule_single_event($startUtc, self::HOOK_START, [$post_id]);
+            } else {
+                self::set_live_client($post_id);
+                if (!wp_next_scheduled(self::HOOK_VERIFY, [$post_id])) {
+                    wp_schedule_single_event($now + 60, self::HOOK_VERIFY, [$post_id]);
+                }
+            }
         }
+
         if ($endUtc && $endUtc > $now) {
             wp_schedule_single_event($endUtc, self::HOOK_END, [$post_id]);
         }
     }
+
+
 
     public static function handle_start($post_id) {
         self::set_live_client($post_id);
@@ -67,17 +78,17 @@ class Live_Scheduler {
     }
 
     public static function handle_verify($post_id) {
-        // Only refresh if still within window (avoid touching if schedule changed)
         $now   = time();
         $start = (int) get_post_meta($post_id, CPT_Client::META_START_AT, true);
         $end   = (int) get_post_meta($post_id, CPT_Client::META_END_AT, true);
 
-        if ($start && $end && $now >= $start && $now < $end) {
-            if (class_exists(__NAMESPACE__ . '\\Live_Service')) {
-                Live_Service::refresh_for_client($post_id);
-            }
+        $in_window = ($start && $now >= $start) && (!$end || $now < $end);
+        if ($in_window && class_exists(__NAMESPACE__ . '\\Live_Service')) {
+            Live_Service::refresh_for_client($post_id);
         }
+
     }
+
 
     public static function handle_end($post_id) {
         self::unset_live_if_matches($post_id);
@@ -90,7 +101,7 @@ class Live_Scheduler {
 
     public static function set_live_client($post_id) {
         $post = get_post($post_id);
-        if (!$post || $post->post_type !== CPT_Client::POST_TYPE || $post->post_status !== 'publish') return;
+        if (!$post || $post->post_type !== CPT_Client::POST_TYPE) return;
 
         // Only one live at a time
         update_option(Admin_UI::OPT_LIVE_CLIENT, (int) $post_id);
@@ -125,10 +136,11 @@ class Live_Scheduler {
         foreach ($ids as $id) {
             $start = (int) get_post_meta($id, CPT_Client::META_START_AT, true);
             $end   = (int) get_post_meta($id, CPT_Client::META_END_AT, true);
-            if ($start && $end && $now >= $start && $now < $end) {
-                // If multiple overlap, last wins (customise tie-break if you want)
-                $liveShouldBe = (int) $id;
-            }
+
+            $in_window = ($start && $now >= $start) && (!$end || $now < $end);
+            if ($in_window) { $liveShouldBe = (int)$id; }
+
+
         }
 
         $currentLive = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
