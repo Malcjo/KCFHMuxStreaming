@@ -69,6 +69,7 @@ class Shortcode_Gallery {
         // NEW: client-based single view
         $qs_client_id = isset($_GET['kcfh_client']) ? (int) $_GET['kcfh_client'] : 0;
         $qs_playback = isset($_GET['kcfh_pb']) ? sanitize_text_field($_GET['kcfh_pb']) : '';
+
         $qs_client_slug = isset($_GET['client']) ? sanitize_title($_GET['client']) : '';
 
         if ($qs_client_slug && !$qs_client_id) {
@@ -80,6 +81,11 @@ class Shortcode_Gallery {
         if ($view === 'auto') {
             $view = $qs_client_id ? 'single' : 'grid';
         }
+
+        // (debug)
+      if ($qs_client_slug || $qs_client_id) {
+          echo '<script>console.log("[KCFH] resolved client id =", ' . (int)$qs_client_id . ');</script>';
+      }
 
         //if you have selected a video, render it as solo
         if ($view === 'single') {
@@ -128,50 +134,55 @@ class Shortcode_Gallery {
         return self::render_mux_grid($assets, $columns, $poster_fallback, $showtitle, $detail_page, $next);
     }
 
-public static function render_single($id_or_playback, $poster_fallback) {
-    $back_url = esc_url(remove_query_arg(['kcfh_client','kcfh_pb']));
+public static function render_single($client_param, $poster_fallback) {
+    // Resolve client id (we expect an int, but support slug as a convenience)
+    $client_id = is_numeric($client_param) ? (int) $client_param : 0;
+    if (!$client_id && is_string($client_param) && $client_param !== '') {
+        $p = get_page_by_path(sanitize_title($client_param), OBJECT, CPT_Client::POST_TYPE);
+        if ($p) { $client_id = (int) $p->ID; }
+    }
+    if (!$client_id) return '<p>Missing client.</p>';
 
-    // Detect mode: preferred is numeric client ID
-    $client_id = is_numeric($id_or_playback) ? (int) $id_or_playback : 0;
+    // Back link cleans all the variants we might use
+    $back_url = esc_url(remove_query_arg(['client','kcfh_client','kcfh_pb']));
 
-    // Option keys (using literals to avoid class-constant coupling)
-    $live_client   = (int) get_option('kcfh_live_client', 0);
-    $live_playback = get_option('kcfh_live_playback', '');
+    // Read live state (support old _id option names too)
+    $live_client   = (int) ( get_option('kcfh_live_client', 0) ?: get_option('kcfh_live_client_id', 0) );
+    $live_playback = (string) ( get_option('kcfh_live_playback', '') ?: get_option('kcfh_live_playback_id', '') );
 
-    // Resolve what we should render
-    $is_live_now  = false;
-    $playback_id  = '';
-    $stream_type  = 'on-demand'; // default
+    // Decide source: live if this client matches and we have a live playback id
+    $is_live_now = ($live_client === $client_id) && ($live_playback !== '');
+    $playback_id = '';
+    $stream_type = 'on-demand';
 
-    if ($client_id) {
-        // Client-driven flow (new, secure)
-        $is_live_now  = ($live_client === $client_id) && !empty($live_playback);
-        if ($is_live_now) {
-            $playback_id = $live_playback;     // inject live only when truly live
-            $stream_type = 'live';
-        } else {
-            // Fall back to assigned VOD
-            $vod_playback = get_post_meta($client_id, '_kcfh_playback_id', true);
-            $playback_id  = $vod_playback ?: '';
-        }
+    if ($is_live_now) {
+        $playback_id = $live_playback; // only reveal live playback when actually live
+        $stream_type = 'live';
     } else {
-        // Legacy path: a direct playback-id was provided (old URLs)
-        $playback_id = (string) $id_or_playback;
-        if (!$playback_id) return '<p>Missing client.</p>';
-
-        // If this playback equals the current live playback, treat as live (old behavior)
-        if ($live_playback && hash_equals($live_playback, $playback_id)) {
-            $stream_type = 'live';
-        }
+        $vod_playback = (string) get_post_meta($client_id, '_kcfh_playback_id', true);
+        $playback_id  = $vod_playback ?: '';
     }
 
-    // Render
+    // ---- Debug to browser console (safe) ----
+    ?>
+    <script>
+      console.log('[KCFH Debug] resolved client_id =', <?= (int) $client_id ?>);
+      console.log('[KCFH Debug] live_client =', <?= (int) $live_client ?>);
+      console.log('[KCFH Debug] is_live_now =', <?= $is_live_now ? 'true' : 'false' ?>);
+      console.log('[KCFH Debug] live_playback =', <?= json_encode($live_playback) ?>);
+      console.log('[KCFH Debug] chosen playback_id =', <?= json_encode($playback_id) ?>);
+      console.log('[KCFH Debug] stream_type =', <?= json_encode($stream_type) ?>);
+    </script>
+    <?php
+
+    // ---- Render ----
     ob_start(); ?>
     <style>
       figure#FrontImage{display:none !important;}
       mux-player{display:block;width:100%;aspect-ratio:16/9;min-height:320px}
       .kcfh-offline{display:flex;align-items:center;justify-content:center;aspect-ratio:16/9;background:#111;color:#eee;border-radius:8px}
     </style>
+
     <div class="kcfh-single">
       <a class="kcfh-back" href="<?= $back_url ?>">← Back</a>
 
@@ -186,17 +197,22 @@ public static function render_single($id_or_playback, $poster_fallback) {
             poster="<?= esc_url(self::thumbnail_url($playback_id, 1280, 720, 2)) ?>"
           <?php endif; ?>>
         </mux-player>
+        <!-- Load mux-player as ES module -->
         <script type="module" src="https://unpkg.com/@mux/mux-player@2"></script>
       <?php else: ?>
-        <div class="kcfh-offline"><p style="margin:0;padding:0 1rem;text-align:center;">Currently not live.</p></div>
+        <div class="kcfh-offline">
+          <p style="margin:0;padding:0 1rem;text-align:center;">Currently not live.</p>
+        </div>
         <?php if ($poster_fallback): ?>
-          <img src="<?= esc_url($poster_fallback) ?>" alt="" style="max-width:1080px;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;">
+          <img src="<?= esc_url($poster_fallback) ?>" alt=""
+               style="max-width:1080px;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;">
         <?php endif; ?>
       <?php endif; ?>
     </div>
     <?php
     return ob_get_clean();
 }
+
 
 
     public static function render_clients_grid($atts, $columns, $poster_fallback, $search_term_override = null) {
