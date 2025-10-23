@@ -60,6 +60,9 @@ class Shortcode_Gallery {
         wp_enqueue_script('mux-player');
         wp_enqueue_style('kcfh-streaming-gallery');
 
+
+
+
         // Normalise
         $columns   = min(4, max(1, (int) $atts['columns']));//------------
         $cache_ttl = max(0, (int) $atts['cache_ttl']);
@@ -70,16 +73,62 @@ class Shortcode_Gallery {
         $qs_client_id = isset($_GET['kcfh_client']) ? (int) $_GET['kcfh_client'] : 0;
         $qs_playback = isset($_GET['kcfh_pb']) ? sanitize_text_field($_GET['kcfh_pb']) : '';
 
+        /*
         $qs_client_slug = isset($_GET['client']) ? sanitize_title($_GET['client']) : '';
 
         if ($qs_client_slug && !$qs_client_id) {
           $p = get_page_by_path($qs_client_slug, OBJECT, CPT_Client::POST_TYPE);
           if ($p) $qs_client_id = (int) $p->ID;
         }
+*/
+        
+
+        $qs_client_slug = isset($_GET['client']) ? sanitize_title($_GET['client']) : '';
+
+        if ($qs_client_slug && !$qs_client_id) {
+            // Prefer direct name lookup (reliable even when CPT is non-public)
+            $found = get_posts([
+                'post_type'      => CPT_Client::POST_TYPE,
+                'name'           => $qs_client_slug,
+                'post_status'    => 'any',
+                'posts_per_page' => 1,
+                'no_found_rows'  => true,
+                'fields'         => 'ids',
+            ]);
+            if (!empty($found)) {
+                $qs_client_id = (int) $found[0];
+            } else {
+                // Fallback to path-based resolution
+                $p = get_page_by_path($qs_client_slug, OBJECT, CPT_Client::POST_TYPE);
+                if ($p) { $qs_client_id = (int) $p->ID; }
+            }
+        }
+                
+/*
+        $view = $atts['view'];
+        */
+        /*
+          if ($view === 'auto') {
+            $view = $qs_client_id ? 'single' : 'grid';
+          }
+        */
+/*
+        // If a client is explicitly requested, force single view regardless of the shortcode's view setting.
+        if ($qs_client_id) {
+            $view = 'single';
+        } elseif ($view === 'auto') {
+            $view = 'grid';
+        }
+        */
+
 
         $view = $atts['view'];
-        if ($view === 'auto') {
-            $view = $qs_client_id ? 'single' : 'grid';
+
+        // If a slug is present, we’re in single view (even before we resolve the ID).
+        if (!empty($_GET['client'])) {
+            $view = 'single';
+        } elseif ($view === 'auto') {
+            $view = 'grid';
         }
 
         // (debug)
@@ -87,19 +136,25 @@ class Shortcode_Gallery {
           echo '<script>console.log("[KCFH] resolved client id =", ' . (int)$qs_client_id . ');</script>';
       }
 
+
         //if you have selected a video, render it as solo
         if ($view === 'single') {
-          if ($qs_client_id) {
-              return self::render_single($qs_client_id, $poster_fallback);
-          }
-            //$playback_id = $qs_playback ?: ( $atts['playback_id'] ? sanitize_text_field($atts['playback_id']) : '' );
-            //return self::render_single($playback_id, $poster_fallback);
-            return '<p>Missing client.</p>';
+            $client_ref = $qs_client_id ?: $qs_client_slug;  // pass ID if we have it, otherwise slug
+            if (!$client_ref) {
+                return '<p>Missing client.</p>';
+            }
+            return self::render_single($client_ref, $poster_fallback);
         }
+
 
         //render from Clients instead of Mux if requested
         $source = strtolower($atts['source']);
         if ($view === 'grid' && $source === 'clients') {
+                ?>
+            <script>
+              console.log("'Render grid 2'");
+            </script>
+            <?php
             return self::render_clients_grid($atts, $columns, $poster_fallback);
         }
 
@@ -135,12 +190,36 @@ class Shortcode_Gallery {
     }
 
 public static function render_single($client_param, $poster_fallback) {
-    // Resolve client id (we expect an int, but support slug as a convenience)
-    $client_id = is_numeric($client_param) ? (int) $client_param : 0;
-    if (!$client_id && is_string($client_param) && $client_param !== '') {
-        $p = get_page_by_path(sanitize_title($client_param), OBJECT, CPT_Client::POST_TYPE);
-        if ($p) { $client_id = (int) $p->ID; }
+
+      ?>
+    <script>
+      console.log('Render Single');
+    </script>
+    <?php
+    $client_id = 0;
+
+    if (is_numeric($client_param)) {
+        $client_id = (int) $client_param;
+    } else {
+        $slug = sanitize_title((string) $client_param);
+        if ($slug !== '') {
+            $found = get_posts([
+                'post_type'      => CPT_Client::POST_TYPE,
+                'name'           => $slug,
+                'post_status'    => 'any',
+                'posts_per_page' => 1,
+                'no_found_rows'  => true,
+                'fields'         => 'ids',
+            ]);
+            if (!empty($found)) {
+                $client_id = (int) $found[0];
+            } else {
+                $p = get_page_by_path($slug, OBJECT, CPT_Client::POST_TYPE);
+                if ($p) { $client_id = (int) $p->ID; }
+            }
+        }
     }
+
     if (!$client_id) return '<p>Missing client.</p>';
 
     // Back link cleans all the variants we might use
@@ -216,6 +295,11 @@ public static function render_single($client_param, $poster_fallback) {
 
 
     public static function render_clients_grid($atts, $columns, $poster_fallback, $search_term_override = null) {
+        ?>
+          <script>
+            console.log('Render Grid');
+          </script>
+        <?php
         $live_client_id = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
         $live_playback  = get_option(Admin_UI::OPT_LIVE_PLAYBACK, '');
 
@@ -304,8 +388,10 @@ public static function render_single($client_param, $poster_fallback) {
             //$link    = $playback 
             //? add_query_arg('kcfh_pb', rawurlencode($playback), $base_url) 
             //: '#';
-            $link = add_query_arg('client', $p->post_name, $base_url);
 
+            //$link = add_query_arg('client', $p->post_name, $base_url);
+            $base_url = remove_query_arg(['client','kcfh_client','kcfh_pb'], $detail_page ?: self::current_page_url());
+            $link = add_query_arg('client', $p->post_name, $base_url);
 
             $dob_str = $dob ? date_i18n(get_option('date_format'), strtotime($dob)) : '';
             $dod_str = $dod ? date_i18n(get_option('date_format'), strtotime($dod)) : '';

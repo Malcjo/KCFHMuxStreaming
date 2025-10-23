@@ -23,6 +23,19 @@ class Shortcode_Client_Search {
   }
 
   public static function render($atts = []) {
+
+    // If a single client has been requested, do NOT render another grid here.
+    // Let the gallery shortcode handle the single view.
+    $has_single = !empty($_GET['client']) || !empty($_GET['kcfh_pb']);
+    if ($has_single) {
+        // Option A: return only the search form (hide results)
+        // return $this->render_form_only();
+
+        // Option B: hide entirely
+        return '';
+    }
+
+
     $atts = shortcode_atts([
       // Search UI
       'param'           => 'kcfh_q',

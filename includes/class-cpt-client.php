@@ -159,7 +159,7 @@ class CPT_Client {
 
     ?>
     <hr>
-    <h3>Assigned VOD</h3>
+    <h3>Assigned VOD2</h3>
     <p>
       <label>
         VOD Title<br>

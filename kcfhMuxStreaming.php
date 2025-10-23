@@ -46,6 +46,8 @@ require_once KCFH_STREAMING_DIR . 'includes/class-live-service.php'; //editing t
 
 require_once KCFH_STREAMING_DIR. '/includes/class-live-scheduler.php';
 
+require_once KCFH_STREAMING_DIR. '/includes/class-shortcode-kcfhgallery.php';
+
 
 
 
@@ -61,6 +63,7 @@ add_action('plugins_loaded', function () {
     \KCFH\Streaming\Asset_Service::init();
     \KCFH\Streaming\Shortcode_Gallery::init();
     \KCFH\Streaming\Shortcode_Client_Search::init();
+    \KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
   
 });
 
