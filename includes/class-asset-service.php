@@ -256,5 +256,111 @@ public static function get_asset($asset_id, $cache_ttl = 300) {
     return $normalized;
 }
 
+/** ---- STATIC MP4: helpers (ADD THESE) ----------------------------------- */
+
+/** Create a static rendition for this asset: 'highest' | '1080p' | '720p' | 'audio-only' */
+public static function create_static_rendition(string $asset_id, string $resolution = 'highest') {
+    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
+    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    if (!$token_id || !$token_secret) {
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+    }
+    $url  = self::API_BASE . '/assets/' . rawurlencode($asset_id) . '/static-renditions';
+    $resp = wp_remote_post($url, [
+        'headers' => [
+            'Authorization' => 'Basic ' . base64_encode($token_id . ':' . $token_secret),
+            'Accept'        => 'application/json',
+            'Content-Type'  => 'application/json',
+        ],
+        'timeout' => 25,
+        'body'    => wp_json_encode(['resolution' => $resolution]),
+    ]);
+    if (is_wp_error($resp)) return $resp;
+    $code = wp_remote_retrieve_response_code($resp);
+    $body = json_decode(wp_remote_retrieve_body($resp), true);
+    return ($code >= 200 && $code < 300) ? $body : new \WP_Error('kcfh_mux_http', 'Mux API HTTP ' . $code, $body);
+}
+
+/** Fetch the RAW asset (full Mux shape). Returns the array under 'data'. */
+public static function get_asset_raw(string $asset_id) {
+    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
+    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    if (!$token_id || !$token_secret) {
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+    }
+    $url  = self::API_BASE . '/assets/' . rawurlencode($asset_id);
+    $resp = wp_remote_get($url, [
+        'headers' => [
+            'Authorization' => 'Basic ' . base64_encode($token_id . ':' . $token_secret),
+            'Accept'        => 'application/json',
+        ],
+        'timeout' => 20,
+    ]);
+    if (is_wp_error($resp)) return $resp;
+    $code = wp_remote_retrieve_response_code($resp);
+    $body = json_decode(wp_remote_retrieve_body($resp), true);
+    if ($code < 200 || $code >= 300 || !is_array($body) || empty($body['data'])) {
+        return new \WP_Error('kcfh_mux_http', 'Mux asset fetch failed', ['status'=>$code, 'body'=>$body]);
+    }
+    return $body['data'];
+}
+
+/** From RAW asset, pick a ready static mp4 file name. Prefers 1080p.mp4 > highest.mp4 > any ready .mp4 */
+public static function pick_ready_static_name_from_raw(array $raw): ?string {
+    $files = [];
+    if (isset($raw['static_renditions']['files']) && is_array($raw['static_renditions']['files'])) {
+        $files = $raw['static_renditions']['files'];
+    } elseif (isset($raw['static_renditions']) && is_array($raw['static_renditions'])) {
+        $files = $raw['static_renditions']; // some examples show flat array
+    }
+    if (!$files) return null;
+
+    $ready = [];
+    foreach ($files as $r) {
+        $name = $r['name'] ?? '';
+        if (($r['status'] ?? '') === 'ready' && $name) $ready[$name] = true;
+    }
+    if (isset($ready['1080p.mp4'])) return '1080p.mp4';
+    if (isset($ready['highest.mp4'])) return 'highest.mp4';
+    foreach (array_keys($ready) as $name) {
+        if (substr($name, -4) === '.mp4') return $name;
+    }
+    return null;
+}
+
+/** From RAW asset, get the first public playback id. */
+public static function first_public_playback_id_from_raw(array $raw): ?string {
+    $pbs = $raw['playback_ids'] ?? [];
+    foreach ($pbs as $pb) {
+        $policy = strtolower($pb['policy'] ?? 'public');
+        if ($policy === 'public' && !empty($pb['id'])) return $pb['id'];
+    }
+    return !empty($pbs[0]['id']) ? $pbs[0]['id'] : null;
+}
+
+/** Build a direct download URL for a static MP4 file. */
+public static function build_static_download_url(string $playback_id, string $static_name, string $save_as): string {
+    return "https://stream.mux.com/{$playback_id}/{$static_name}?download=" . rawurlencode($save_as);
+}
+
+/** Suggest a friendly filename from RAW asset (title|external_id|passthrough + created date). */
+public static function suggest_filename_from_raw(array $raw): string {
+    $base = 'video';
+    // try meta.title or name/title, external_id, passthrough
+    $metaTitle = isset($raw['meta']['title']) ? sanitize_title($raw['meta']['title']) : '';
+    $name      = isset($raw['name']) ? sanitize_title($raw['name']) : '';
+    $title     = isset($raw['title']) ? sanitize_title($raw['title']) : '';
+    $external  = isset($raw['external_id']) ? sanitize_title($raw['external_id']) : '';
+    $pass      = isset($raw['passthrough']) ? sanitize_title($raw['passthrough']) : '';
+    foreach ([$metaTitle, $title, $name, $external, $pass] as $try) {
+        if ($try) { $base = $try; break; }
+    }
+    if (!empty($raw['created_at'])) {
+        $ts = is_numeric($raw['created_at']) ? (int)$raw['created_at'] : strtotime($raw['created_at']);
+        if ($ts) $base .= '_' . date_i18n('Y-m-d', $ts);
+    }
+    return $base . '.mp4';
+}
+
 
 }

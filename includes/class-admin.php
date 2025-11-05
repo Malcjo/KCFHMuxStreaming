@@ -5,6 +5,8 @@ if (!defined('ABSPATH')) exit;
 class Admin_UI {
   public const OPT_LIVE_CLIENT = 'kcfh_live_client_id';
   public const OPT_LIVE_PLAYBACK = 'kcfh_live_playback_id';
+  private const NONCE_VOD_ACTIONS = 'kcfh_vod_actions';
+
 
   public static function boot(){
     //register UI
@@ -16,6 +18,9 @@ class Admin_UI {
     add_action('admin_post_kcfh_save_live_settings', [__CLASS__, 'handle_save_live_settings']);
     add_action('admin_post_kcfh_assign_vod',         ['KCFH\Streaming\Utility_Admin', 'handle_assign_vod']);
     add_action('admin_post_kcfh_set_reconnect_window', [__CLASS__, 'handle_set_reconnect_window']);
+    add_action('admin_post_kcfh_enable_mp4',  [__CLASS__, 'handle_enable_mp4']);
+    add_action('admin_post_kcfh_download_mp4', [__CLASS__, 'handle_download_mp4']);
+
 
   }
   public static function register_menus() {
@@ -179,133 +184,141 @@ class Admin_UI {
   }
 
     /** ---------- VOD Manager: list Mux assets + assign ---------- */
-    public static function render_vod_manager() {
+public static function render_vod_manager() {
+  if (!current_user_can('manage_options')) wp_die('Permission denied');
 
-      $notice = isset($_GET['kcfh_notice']) ? sanitize_text_field($_GET['kcfh_notice']) : '';
-      if ($notice) {
-        echo '<div class="notice notice-' . (in_array($notice, ['assigned','unassigned']) ? 'success' : 'error') . '"><p>';
-        echo $notice === 'assigned'   ? 'VOD assigned.' :
-            ($notice === 'unassigned' ? 'VOD unassigned.' :
-            ($notice === 'nonce'      ? 'Security check failed.' :
-            ($notice === 'cap'        ? 'Insufficient permissions.' :
-            ($notice === 'login'      ? 'Please log in.' :
-            ($notice === 'badreq'     ? 'Bad request.' : '')))));
-        echo '</p></div>';
-      }
+  // --- Notices (single, consolidated) ---
+  $notice = isset($_GET['kcfh_notice']) ? sanitize_text_field($_GET['kcfh_notice']) : '';
+  $msg    = isset($_GET['kcfh_msg']) ? wp_kses_post(wp_unslash($_GET['kcfh_msg'])) : '';
+  if ($notice) {
+    $success_codes = ['assigned','unassigned','mp4_req','mp4_wait'];
+    $cls = in_array($notice, $success_codes, true) ? 'success' : 'error';
+    echo '<div class="notice notice-' . esc_attr($cls) . '"><p>' . ($msg ? $msg : esc_html($notice)) . '</p></div>';
+  }
 
-        
-        if (!current_user_can('manage_options')) wp_die('Permission denied');
+  // Fetch assets
+  $res = Asset_Service::fetch_assets(
+    ['limit'=>50, 'order'=>'created_at', 'direction'=>'desc', 'status'=>'ready'],
+    30
+  );
+  echo '<div class="wrap"><h1>VOD Manager</h1>';
 
-        /*
-        $notice = isset($_GET['kcfh_notice']) ? sanitize_text_field($_GET['kcfh_notice']) : '';
-        if ($notice) {
-            echo '<div class="notice notice-success"><p>';
-            echo $notice === 'assigned'   ? 'VOD assigned.' :
-                ($notice === 'unassigned' ? 'VOD unassigned.' :
-                ($notice === 'nonce'      ? 'Security check failed.' :
-                ($notice === 'badreq'     ? 'Bad request.' : '')));
-            echo '</p></div>';
-        }
-            */
+  if (is_wp_error($res)) {
+    echo '<p style="color:#c00">' . esc_html($res->get_error_message()) . '</p></div>';
+    return;
+  }
 
-        $res = Asset_Service::fetch_assets(['limit'=>50, 'order'=>'created_at', 'direction'=>'desc', 'status'=>'ready'], 30);
-        ?>
-          <div class="wrap">
-            <h1>VOD Manager</h1>
-              <?php
-              if (is_wp_error($res)) 
-                { 
-                  ?>
-                  <p style="color:#c00">
-                    <?php esc_html($res->get_error_message())?>
-                  </p>
-                </div>
-                  <?php
-                  return; 
-                }
+  $assets  = $res['assets'];
+  $clients = get_posts([
+    'post_type'   => CPT_Client::POST_TYPE,
+    'numberposts' => -1,
+    'orderby'     => 'title',
+    'order'       => 'ASC'
+  ]);
 
-        $assets  = $res['assets'];
-        $clients = get_posts(['post_type'=>CPT_Client::POST_TYPE, 'numberposts'=>-1, 'orderby'=>'title', 'order'=>'ASC']);
+  // Build client → assigned asset map
+  $client_vod_map = [];
+  foreach ($clients as $c) {
+    $client_vod_map[$c->ID] = get_post_meta($c->ID, '_kcfh_asset_id', true);
+  }
 
-        // Build client → assigned asset map
-        $client_vod_map = [];
-        foreach ($clients as $c) $client_vod_map[$c->ID] = get_post_meta($c->ID, '_kcfh_asset_id', true);
+  echo '<table class="widefat striped">';
+  echo '<thead><tr>';
+  echo '<th>Asset ID</th>';
+  echo '<th>Created</th>';
+  echo '<th>Title</th>';
+  echo '<th>Creator ID</th>';
+  echo '<th>External ID</th>';
+  echo '<th>Preview</th>';
+  echo '<th>Assign to Client</th>';
+  echo '<th>Download</th>';
+  echo '</tr></thead><tbody>';
 
-        ?>
-        
-        <table class="widefat striped">
-          <thead>
-            <tr>
-              <th>Asset ID</th>
-              <th>Created</th>
-              <th>Title</th>
-              <th>Creator ID</th>
-              <th>External ID</th>
-              <th>Preview</th>
-              <th>Assign to Client</th>
-            </tr>
-          </thead>
-        <tbody>
+  foreach ($assets as $a) {
+    $created = !empty($a['created_at'])
+      ? date_i18n(get_option('date_format').' '.get_option('time_format'), strtotime($a['created_at']))
+      : '—';
 
-        <?php
-        foreach ($assets as $a) {
-            $created = !empty($a['created_at'])
-            ? date_i18n(get_option('date_format').' '.get_option('time_format'), strtotime($a['created_at']))
-            : '—';
+    $title      = $a['title']       ? esc_html($a['title'])       : '—';
+    $creator_id = $a['creator_id']  ? esc_html($a['creator_id'])  : '—';
+    $external   = $a['external_id'] ? esc_html($a['external_id']) : '—';
 
-            $title      = $a['title']       ? esc_html($a['title'])       : '—';
-            $creator_id = $a['creator_id']  ? esc_html($a['creator_id'])  : '—';
-            $external   = $a['external_id'] ? esc_html($a['external_id']) : '—';
-
-            // Who currently holds this asset?
-            $current_client_id = 0;
-            foreach ($client_vod_map as $cid => $assigned_asset) {
-            if ($assigned_asset === $a['id']) { $current_client_id = (int) $cid; break; }
-            }
-
-            $pid   = self::first_public_playback_id_local($a);
-            $thumb = $pid ? esc_url(add_query_arg(['width'=>320,'height'=>180,'time'=>2,'fit_mode'=>'smartcrop'], "https://image.mux.com/$pid/thumbnail.jpg")) : '';
-
-            echo '<tr>';
-            echo '<td style="font-family:monospace">'.esc_html($a['id']).'</td>';
-            echo '<td>'.esc_html($created).'</td>';
-            echo '<td>'.$title.'</td>';
-            echo '<td>'.$creator_id.'</td>';
-            echo '<td>'.$external.'</td>';
-            echo '<td>'.($thumb ? '<img src="'.$thumb.'" width="160" height="90" style="border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)">' : '—').'</td>';
-            echo '<td>';
-            
-            // linking up the save function with kcfh assign vod
-            echo '<form method="post" action="' . esc_url( admin_url('admin-post.php?action=kcfh_assign_vod') ) . '">';
-            wp_nonce_field( 'kcfh_assign_vod_' . $a['id'], 'kcfh_nonce' ); // named field
-
-            echo '<input type="hidden" name="asset_id" value="'.esc_attr($a['id']).'">';
-            echo '<input type="hidden" name="action" value="kcfh_assign_vod">';
-            echo '<input type="hidden" name="asset_id" value="'.esc_attr($a['id']).'">';
-
-            echo '<select name="client_id">';
-                // Unassigned option
-                $selU = ($current_client_id === 0) ? ' selected' : '';
-                echo '<option value="0"'.$selU.'>— Unassigned —</option>';
-
-                // Only clients with NO VOD, plus the one currently assigned to THIS asset
-                foreach ($clients as $c) {
-                $assigned_asset = isset($client_vod_map[$c->ID]) ? $client_vod_map[$c->ID] : '';
-                $is_current = ($c->ID === $current_client_id);
-                if (!$is_current && !empty($assigned_asset)) continue;
-
-                $sel = $is_current ? ' selected' : '';
-                echo '<option value="'.esc_attr($c->ID).'"'.$sel.'>'.esc_html(get_the_title($c)).' (#'.$c->ID.')</option>';
-                }
-            echo '</select> ';
-            submit_button('Save', 'secondary', '', false);
-            echo '</form>';
-            echo '</td>';
-            echo '</tr>';
-        }
-
-        echo '</tbody></table></div>';
+    // Who currently holds this asset?
+    $current_client_id = 0;
+    foreach ($client_vod_map as $cid => $assigned_asset) {
+      if ($assigned_asset === $a['id']) { $current_client_id = (int) $cid; break; }
     }
+
+    $pid   = self::first_public_playback_id_local($a);
+    $thumb = $pid
+      ? esc_url(add_query_arg(
+          ['width'=>320,'height'=>180,'time'=>2,'fit_mode'=>'smartcrop'],
+          "https://image.mux.com/$pid/thumbnail.jpg"
+        ))
+      : '';
+
+    echo '<tr>';
+    echo '<td style="font-family:monospace">'.esc_html($a['id']).'</td>';
+    echo '<td>'.esc_html($created).'</td>';
+    echo '<td>'.$title.'</td>';
+    echo '<td>'.$creator_id.'</td>';
+    echo '<td>'.$external.'</td>';
+    echo '<td>'.($thumb ? '<img src="'.$thumb.'" width="160" height="90" style="border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)">' : '—').'</td>';
+
+    // -------- Assign to Client column (own <td>) --------
+    echo '<td>';
+    echo '<form method="post" action="' . esc_url( admin_url('admin-post.php?action=kcfh_assign_vod') ) . '">';
+    wp_nonce_field( 'kcfh_assign_vod_' . $a['id'], 'kcfh_nonce' );
+
+    echo '<input type="hidden" name="action" value="kcfh_assign_vod">';
+    echo '<input type="hidden" name="asset_id" value="'.esc_attr($a['id']).'">';
+
+    echo '<select name="client_id">';
+      // Unassigned option
+      $selU = ($current_client_id === 0) ? ' selected' : '';
+      echo '<option value="0"'.$selU.'>— Unassigned —</option>';
+
+      // Only clients with NO VOD, plus the one currently assigned to THIS asset
+      foreach ($clients as $c) {
+        $assigned_asset = isset($client_vod_map[$c->ID]) ? $client_vod_map[$c->ID] : '';
+        $is_current     = ($c->ID === $current_client_id);
+        if (!$is_current && !empty($assigned_asset)) continue;
+
+        $sel = $is_current ? ' selected' : '';
+        echo '<option value="'.esc_attr($c->ID).'"'.$sel.'>'.esc_html(get_the_title($c)).' (#'.$c->ID.')</option>';
+      }
+    echo '</select> ';
+    submit_button('Save', 'secondary', '', false);
+    echo '</form>';
+    echo '</td>';
+
+    // -------- Download column (separate <td>) --------
+    $nonce_vod = wp_create_nonce(self::NONCE_VOD_ACTIONS);
+
+    $enable_highest_url = admin_url('admin-post.php?action=kcfh_enable_mp4'
+      . '&asset_id=' . rawurlencode($a['id'])
+      . '&res=highest&_wpnonce=' . $nonce_vod);
+
+    $enable_1080p_url = admin_url('admin-post.php?action=kcfh_enable_mp4'
+      . '&asset_id=' . rawurlencode($a['id'])
+      . '&res=1080p&_wpnonce=' . $nonce_vod);
+
+    $download_url = admin_url('admin-post.php?action=kcfh_download_mp4'
+      . '&asset_id=' . rawurlencode($a['id'])
+      . '&_wpnonce=' . $nonce_vod);
+
+    echo '<td>';
+    echo '<a class="button button-small" href="' . esc_url($enable_highest_url) . '">Enable MP4 (Highest)</a> ';
+    echo '<a class="button button-small" href="' . esc_url($enable_1080p_url) . '">Enable MP4 (1080p)</a> ';
+    echo '<a class="button button-small" href="' . esc_url($download_url) . '">Download MP4</a>';
+    echo '</td>';
+
+    echo '</tr>';
+  }
+
+  echo '</tbody></table></div>';
+}
+
 
 
 
@@ -472,4 +485,69 @@ public static function handle_set_reconnect_window() {
     }
     return !empty($asset['playback_ids'][0]['id']) ? $asset['playback_ids'][0]['id'] : null;
   }
+
+  /** Create a static MP4 (highest/1080p) for an asset */
+public static function handle_enable_mp4() {
+    if (!current_user_can('manage_options')) wp_die('Nope');
+    check_admin_referer(self::NONCE_VOD_ACTIONS);
+
+    $asset_id   = isset($_GET['asset_id']) ? sanitize_text_field($_GET['asset_id']) : '';
+    $resolution = isset($_GET['res']) ? sanitize_text_field($_GET['res']) : 'highest';
+    if (!$asset_id) wp_die('Missing asset_id');
+
+    $res = \KCFH\Streaming\Asset_Service::create_static_rendition($asset_id, $resolution);
+    if (is_wp_error($res)) {
+        self::redirect_vod_notice('mux_err', 'Mux error: ' . esc_html($res->get_error_message()));
+    }
+
+    self::redirect_vod_notice('mp4_req', sprintf('Requested %s MP4. It will appear once processing finishes.', esc_html($resolution)));
+}
+
+/** Download static MP4 (if ready). If not ready, request 'highest' and inform user. */
+public static function handle_download_mp4() {
+    if (!current_user_can('manage_options')) wp_die('Nope');
+    check_admin_referer(self::NONCE_VOD_ACTIONS);
+
+    $asset_id = isset($_GET['asset_id']) ? sanitize_text_field($_GET['asset_id']) : '';
+    if (!$asset_id) wp_die('Missing asset_id');
+
+    // Get RAW asset so we can see static_renditions + playback_ids
+    $raw = \KCFH\Streaming\Asset_Service::get_asset_raw($asset_id);
+    if (is_wp_error($raw)) {
+        self::redirect_vod_notice('mux_err', 'Mux error: ' . esc_html($raw->get_error_message()));
+    }
+
+    $playback_id = \KCFH\Streaming\Asset_Service::first_public_playback_id_from_raw($raw);
+    if (!$playback_id) {
+        self::redirect_vod_notice('mux_err', 'No public playback ID on this asset.');
+    }
+
+    $ready_name = \KCFH\Streaming\Asset_Service::pick_ready_static_name_from_raw($raw);
+    if ($ready_name) {
+        $save_as = \KCFH\Streaming\Asset_Service::suggest_filename_from_raw($raw);
+        $url     = \KCFH\Streaming\Asset_Service::build_static_download_url($playback_id, $ready_name, $save_as);
+        wp_redirect($url);
+        exit;
+    }
+
+    // Not ready yet → request 'highest' (idempotent) and show a friendly notice.
+    $req = \KCFH\Streaming\Asset_Service::create_static_rendition($asset_id, 'highest');
+    if (is_wp_error($req)) {
+        self::redirect_vod_notice('mux_err', 'Mux error: ' . esc_html($req->get_error_message()));
+    }
+
+    self::redirect_vod_notice('mp4_wait', 'Preparing the MP4 now. Please click “Download MP4” again once it’s ready.');
+}
+
+/** Small redirect helper back to VOD Manager with a notice+message */
+private static function redirect_vod_notice(string $code, string $message) {
+    $url = add_query_arg([
+        'page'        => 'kcfh_vod_manager',
+        'kcfh_notice' => $code,
+        'kcfh_msg'    => rawurlencode($message),
+    ], admin_url('admin.php'));
+    wp_safe_redirect($url);
+    exit;
+}
+
 }
