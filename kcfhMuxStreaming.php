@@ -19,6 +19,8 @@ define('KCFH_STREAMING_DIR', plugin_dir_path(__FILE__));
 define('KCFH_STREAMING_URL', plugin_dir_url(__FILE__));
 define('KCFH_STREAMING_CACHE_PREFIX', 'kcfh_streaming_'); // used for transients
 
+define('KCFH_DEBUGMODE', false);
+
 // Hard security checks: ensure creds come from server-only config.
 if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
     // Don’t block activation; shortcode will show a helpful message.
@@ -48,7 +50,13 @@ require_once KCFH_STREAMING_DIR. '/includes/class-live-scheduler.php';
 
 require_once KCFH_STREAMING_DIR. '/includes/class-shortcode-kcfhgallery.php';
 
-
+require_once KCFH_STREAMING_DIR. '/includes/admin/class-constants.php';
+require_once KCFH_STREAMING_DIR. '/includes/admin/class-notices.php';
+require_once KCFH_STREAMING_DIR. '/includes/admin/class-menu.php';
+require_once KCFH_STREAMING_DIR. '/includes/admin/class-dashboard.php';
+require_once KCFH_STREAMING_DIR. '/includes/admin/class-live.php';
+require_once KCFH_STREAMING_DIR. '/includes/admin/class-vod-manager.php';
+require_once KCFH_STREAMING_DIR. 'includes/class-shortcode-gallery-grid.php';
 
 
 //Hook the scheduler on init so cron hooks & the 5-min tick are registered.
@@ -58,12 +66,14 @@ add_action('init', ['KCFH\Streaming\Live_Scheduler', 'bootstrap']);
 add_action('plugins_loaded', function () {
     // Init services
     \KCFH\Streaming\CPT_Client::init();
+    
     \KCFH\Streaming\Admin_UI::boot();
     \KCFH\STREAMING\Live_Scheduler::bootstrap();
     \KCFH\Streaming\Asset_Service::init();
-    \KCFH\Streaming\Shortcode_Gallery::init();
-    \KCFH\Streaming\Shortcode_Client_Search::init();
-    \KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
+    \KCFH\Streaming\Shortcode_Gallery_Grid::init();
+    //\KCFH\Streaming\Shortcode_Gallery::init();
+    //\KCFH\Streaming\Shortcode_Client_Search::init();
+    //\KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
   
 });
 
@@ -105,6 +115,11 @@ add_filter('wp_resource_hints', function($hints, $relation){
   }
   return $hints;
 }, 10, 2);
+
+add_action('wp_enqueue_scripts', function () {
+  wp_enqueue_script('mux-player', 'https://cdn.jsdelivr.net/npm/@mux/mux-player', [], null, true);
+});
+
 
 // Show an admin notice telling you if the shortcode is registered
 add_action('admin_notices', function () {
