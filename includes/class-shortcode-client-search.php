@@ -67,21 +67,70 @@ class Shortcode_Client_Search {
     $ajax_url     = admin_url('admin-ajax.php');
 
 
-      $qs_playback = isset($_GET['kcfh_pb']) ? sanitize_text_field($_GET['kcfh_pb']) : '';
-  if ($qs_playback) {
-    // Optional: show the search bar above the player (comment out if not desired)
-    ob_start(); ?>
-      <form class="kcfh-searchbar" method="get" action="">
-        <div class="kcfh-searchbar-row">
-          <input class="kcfh-searchbar-input" type="text" name="<?= esc_attr($param) ?>" value="<?= esc_attr($q) ?>" placeholder="<?= esc_attr($atts['placeholder']) ?>">
-          <button class="kcfh-searchbar-btn kcfh-searchbar-btn--primary" type="submit"><?= esc_html($atts['button_label']) ?></button>
-          <a class="kcfh-searchbar-btn kcfh-searchbar-btn--ghost" href="<?= esc_url(remove_query_arg(['kcfh_pb'])) ?>"><?= esc_html($atts['clear_label']) ?></a>
-        </div>
-      </form>
-      <?= \KCFH\Streaming\Shortcode_Gallery::render_single($qs_playback, $poster) ?>
-    <?php
-    return ob_get_clean();
+// Accept all the likely param names coming from your grid
+$qs_playback  = isset($_GET['kcfh_pb'])      ? sanitize_text_field($_GET['kcfh_pb'])      : '';
+$qs_client    = isset($_GET['client'])       ? sanitize_title(wp_unslash($_GET['client'])) : '';
+$qs_client_k  = isset($_GET['kcfh_client'])  ? sanitize_title(wp_unslash($_GET['kcfh_client'])) : '';
+$client_slug  = $qs_client ?: $qs_client_k;
+
+if ($qs_playback || $client_slug) {
+  // Ensure mux-player script is present even if not registered
+  // (keep your wp_enqueue_script('mux-player') if you prefer, but this is bulletproof)
+  echo '<script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>';
+
+  ob_start(); ?>
+    <form class="kcfh-searchbar" method="get" action="">
+      <div class="kcfh-searchbar-row">
+        <input class="kcfh-searchbar-input" type="text" name="<?= esc_attr($param) ?>" value="<?= esc_attr($q) ?>" placeholder="<?= esc_attr($atts['placeholder']) ?>">
+        <button class="kcfh-searchbar-btn kcfh-searchbar-btn--primary" type="submit"><?= esc_html($atts['button_label']) ?></button>
+        <a class="kcfh-searchbar-btn kcfh-searchbar-btn--ghost" href="<?= esc_url(remove_query_arg(['kcfh_pb','client','kcfh_client'])) ?>"><?= esc_html($atts['clear_label']) ?></a>
+      </div>
+    </form>
+  <?php
+
+
+
+  // Resolve playback from client slug if needed
+  if (!$qs_playback && $client_slug) {
+    $client = get_page_by_path($client_slug, OBJECT, 'kcfh_client');
+    if ($client && class_exists('\\KCFH\\Streaming\\Asset_Service')) {
+      // 1) live?
+      $live_client_id   = (int) get_option('kcfh_live_client_id', 0);
+      $live_playback_id = trim((string) get_option('kcfh_live_playback_id', ''));
+      if ($live_client_id && $live_playback_id && $client->ID === $live_client_id) {
+        $qs_playback = $live_playback_id;
+      }
+
+      // 2) explicit client playback?
+      if (!$qs_playback) {
+        $pb = (string) get_post_meta($client->ID, '_kcfh_playback_id', true);
+        if ($pb) $qs_playback = $pb;
+      }
+
+      // 3) derive from asset id if still empty
+      if (!$qs_playback) {
+        $asset_id = (string) get_post_meta($client->ID, '_kcfh_asset_id', true);
+        if ($asset_id) {
+          $asset = \KCFH\Streaming\Asset_Service::get_asset($asset_id, 300);
+          if (!is_wp_error($asset) && !empty($asset['playback_ids'][0]['id'])) {
+            $qs_playback = $asset['playback_ids'][0]['id'];
+          }
+        }
+      }
+    }
   }
+
+  // Render single or show a friendly message + back link
+  if ($qs_playback && class_exists('\\KCFH\\Streaming\\Shortcode_Gallery')) {
+    echo \KCFH\Streaming\Shortcode_Gallery::render_single($qs_playback, $poster);
+  } else {
+    echo '<p class="kcfh-empty">Video unavailable for this client.</p>';
+    echo '<p><a class="kcfh-back" href="' . esc_url(remove_query_arg(['kcfh_pb','client','kcfh_client'])) . '">&larr; Back</a></p>';
+  }
+
+  return ob_get_clean();
+}
+
 
   // Otherwise: search UI + initial grid
   $uid       = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : uniqid('kcfh_', true);
