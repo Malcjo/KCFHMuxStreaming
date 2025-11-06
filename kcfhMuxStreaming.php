@@ -30,8 +30,6 @@ if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
 require_once KCFH_STREAMING_DIR . 'includes/class-admin.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-cpt-client.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-asset-service.php';
-require_once KCFH_STREAMING_DIR . 'includes/class-shortcode-gallery.php';
-require_once KCFH_STREAMING_DIR . 'includes/class-shortcode-client-search.php';
 
 require_once KCFH_STREAMING_DIR . 'includes/class-utility-admin.php';
 
@@ -47,8 +45,8 @@ require_once KCFH_STREAMING_DIR . 'includes/class-utility-debug.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-live-service.php'; //editing the live stream asset
 
 require_once KCFH_STREAMING_DIR. '/includes/class-live-scheduler.php';
+require_once KCFH_STREAMING_DIR. 'includes/admin/class-all-clients.php';
 
-require_once KCFH_STREAMING_DIR. '/includes/class-shortcode-kcfhgallery.php';
 
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-constants.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-notices.php';
@@ -72,9 +70,6 @@ add_action('plugins_loaded', function () {
     \KCFH\STREAMING\Live_Scheduler::bootstrap();
     \KCFH\Streaming\Asset_Service::init();
     \KCFH\Streaming\Shortcode_Gallery_Grid::init();
-    //\KCFH\Streaming\Shortcode_Gallery::init();
-    //\KCFH\Streaming\Shortcode_Client_Search::init();
-    //\KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
   
 });
 

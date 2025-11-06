@@ -2,6 +2,7 @@
 namespace KCFH\Streaming\Admin;
 
 use KCFH\Streaming\CPT_Client;
+use KCFH\Streaming\Admin\All_Clients_Page;
 
 if (!defined('ABSPATH')) exit;
 
@@ -15,7 +16,8 @@ final class AdminToolbar {
         $urls = [
             'dashboard'  => menu_page_url('kcfh_streaming', false),
             'vod'        => menu_page_url('kcfh_vod_manager', false),
-            'clients'    => admin_url('edit.php?post_type=' . CPT_Client::POST_TYPE),
+            'clients'        => menu_page_url(All_Clients_Page::SLUG, false),
+            //'clients'    => admin_url('edit.php?post_type=' . CPT_Client::POST_TYPE),
         ];
 
         // Label order (controls display order)

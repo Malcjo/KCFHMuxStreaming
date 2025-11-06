@@ -36,7 +36,8 @@ final class Menu {
         add_submenu_page('kcfh_streaming', 'Live Settings', 'Live Settings', 'manage_options', 'kcfh_live_settings', [Live::class, 'render_settings']);
 
         // Native post screens
-        add_submenu_page('kcfh_streaming', 'All Clients', 'All Clients', 'edit_posts', 'edit.php?post_type=' . CPT_Client::POST_TYPE);
+        add_submenu_page('kcfh_streaming','All Clients', 'All Clients','manage_options',\KCFH\Streaming\Admin\All_Clients_Page::SLUG,[\KCFH\Streaming\Admin\All_Clients_Page::class, 'render']);
+        //add_submenu_page('kcfh_streaming', 'All Clients', 'All Clients', 'edit_posts', 'edit.php?post_type=' . CPT_Client::POST_TYPE);
         add_submenu_page('kcfh_streaming', 'Add New Client', 'Add New Client', 'edit_posts', 'post-new.php?post_type=' . CPT_Client::POST_TYPE);
     }
 }
