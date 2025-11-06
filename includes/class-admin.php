@@ -98,16 +98,25 @@ class Admin_UI {
       'orderby' => 'date',
       'order' => 'DESC',
     ]);
+    ?>
 
-    echo '<div class="wrap"><h1>KCFH Streaming — Dashboard</h1>';
-    echo '<a href="' . esc_url(admin_url('post-new.php?post_type=' . CPT_Client::POST_TYPE)) . '" class="page-title-action">Add New Client</a>';
+    <div class="wrap"><h1>KCFH Streaming — Dashboard</h1>
+    <a href="<?php esc_url(admin_url('post-new.php?post_type=' . CPT_Client::POST_TYPE)) ?>" class="page-title-action">Add New Client</a>
 
-    echo '<p>Manage clients and set which one is currently <strong>Live Now</strong>.</p>';
+    <p>Manage clients and set which one is currently <strong>Live Now</strong>.</p>
 
-    echo '<table class="widefat striped"><thead><tr>';
-    echo '<th>ID</th><th>Name</th><th>Created</th><th>DOB</th><th>DOD</th><th>Asset ID</th><th>Image</th><th>Live</th><th>Actions</th>';
-    echo '</tr></thead><tbody>';
-
+    <table class="widefat striped"><thead><tr>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Created</th>
+    <th>DOB</th>
+    <th>DOD</th>
+    <?php // <th>Asset ID</th> ?>
+    <?php //<th>Image</th> ?>
+    <th>Live</th>
+    <th>Actions</th>
+    </tr></thead><tbody>
+<?php
     foreach ($clients as $p) {
       $dob = get_post_meta($p->ID, '_kcfh_dob', true);
       $dod = get_post_meta($p->ID, '_kcfh_dod', true);
@@ -129,8 +138,8 @@ class Admin_UI {
       echo '<td>'.esc_html(get_the_date('', $p)).'</td>';
       echo '<td>'.esc_html($dob).'</td>';
       echo '<td>'.esc_html($dod).'</td>';
-      echo '<td style="font-family:monospace">'.esc_html($asset).'</td>';
-      echo '<td>'.$thumb.'</td>';
+      //echo '<td style="font-family:monospace">'.esc_html($asset).'</td>';
+      //echo '<td>'.$thumb.'</td>';
       echo '<td>'.$live_badge.'</td>';
       echo '<td>';
       echo '<a href="'.esc_url($edit_link).'">Edit</a> • ';
@@ -222,18 +231,22 @@ public static function render_vod_manager() {
     $client_vod_map[$c->ID] = get_post_meta($c->ID, '_kcfh_asset_id', true);
   }
 
-  echo '<table class="widefat striped">';
-  echo '<thead><tr>';
-  echo '<th>Asset ID</th>';
-  echo '<th>Created</th>';
-  echo '<th>Title</th>';
-  echo '<th>Creator ID</th>';
-  echo '<th>External ID</th>';
-  echo '<th>Preview</th>';
-  echo '<th>Assign to Client</th>';
-  echo '<th>Download</th>';
-  echo '</tr></thead><tbody>';
-
+  ?>
+    <table class="widefat striped">
+    <thead>
+      <tr>
+        <th>Asset ID</th>
+        <th>Created</th>
+        <th>Title</th>
+        <th>Creator ID</th>
+        <th>External ID</th>
+        <th>Preview</th>
+        <th>Assign to Client</th>
+        <th>Download</th>
+      </tr>
+    </thead>
+  <tbody>
+  <?php
   foreach ($assets as $a) {
     $created = !empty($a['created_at'])
       ? date_i18n(get_option('date_format').' '.get_option('time_format'), strtotime($a['created_at']))
@@ -293,6 +306,16 @@ public static function render_vod_manager() {
     echo '</td>';
 
     // -------- Download column (separate <td>) --------
+    ?>
+      <script>
+        function SetDownloadQuality(selectEl) {
+          var url = selectEl.value;
+          if (url) {
+            window.location.href = url;
+          }
+        }
+      </script>
+    <?php
     $nonce_vod = wp_create_nonce(self::NONCE_VOD_ACTIONS);
 
     $enable_highest_url = admin_url('admin-post.php?action=kcfh_enable_mp4'
@@ -303,17 +326,28 @@ public static function render_vod_manager() {
       . '&asset_id=' . rawurlencode($a['id'])
       . '&res=1080p&_wpnonce=' . $nonce_vod);
 
+    $enable_720p_url = admin_url('admin-post.php?action=kcfh_enable_mp4'
+      . '&asset_id=' . rawurlencode($a['id'])
+      . '&res=720p&_wpnonce=' . $nonce_vod);
+
     $download_url = admin_url('admin-post.php?action=kcfh_download_mp4'
       . '&asset_id=' . rawurlencode($a['id'])
       . '&_wpnonce=' . $nonce_vod);
 
-    echo '<td>';
-    echo '<a class="button button-small" href="' . esc_url($enable_highest_url) . '">Enable MP4 (Highest)</a> ';
-    echo '<a class="button button-small" href="' . esc_url($enable_1080p_url) . '">Enable MP4 (1080p)</a> ';
-    echo '<a class="button button-small" href="' . esc_url($download_url) . '">Download MP4</a>';
-    echo '</td>';
+    ?>
 
-    echo '</tr>';
+
+    <td>
+      <label>Set Download quality</label>
+      <select onchange="SetDownloadQuality(this)">
+        <option value="<?php echo esc_url( $enable_highest_url ); ?>">Enable MP4 (Highest)</option>
+        <option value="<?php  echo esc_url($enable_1080p_url) ?>">Enable MP4 (1080p)</option>
+        <option value="<?php  echo esc_url($enable_720p_url) ?>">Enable MP4 (720p)</option>
+      </select>
+          <a class="button button-small" href="<?php echo esc_url($download_url) ?>">Download MP4</a>
+    </td>
+    </tr>
+    <?php
   }
 
   echo '</tbody></table></div>';
