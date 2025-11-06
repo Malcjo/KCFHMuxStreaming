@@ -11,6 +11,8 @@ final class Vod_Manager {
     public static function render(): void {
         if (!current_user_can('manage_options')) wp_die('Permission denied');
 
+        AdminToolbar::render('vod');
+
         $notice = isset($_GET['kcfh_notice']) ? sanitize_text_field($_GET['kcfh_notice']) : '';
         $msg    = isset($_GET['kcfh_msg']) ? wp_kses_post(wp_unslash($_GET['kcfh_msg'])) : '';
         if ($notice) Notices::show($notice, $msg);

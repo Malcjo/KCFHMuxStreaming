@@ -20,6 +20,7 @@ class Admin_UI {
         require_once __DIR__ . '/admin/class-dashboard.php';
         require_once __DIR__ . '/admin/class-live.php';
         require_once __DIR__ . '/admin/class-vod-manager.php';
+        require_once __DIR__ . '/admin/class-admin-toolbar.php';
 
         // (If these aren’t already required elsewhere)
         if (!class_exists(__NAMESPACE__ . '\\Asset_Service')) {

@@ -8,7 +8,8 @@ if (!defined('ABSPATH')) exit;
 final class Dashboard {
     public static function render(): void {
         if (!current_user_can('manage_options')) wp_die('Nope');
-
+        
+        AdminToolbar::render('dashboard');
         $live_id = (int) get_option(Constants::OPT_LIVE_CLIENT, 0);
         $clients = get_posts([
             'post_type'      => CPT_Client::POST_TYPE,
@@ -19,13 +20,19 @@ final class Dashboard {
         ?>
         <div class="wrap">
           <h1>KCFH Streaming — Dashboard</h1>
-          <a href="<?php echo esc_url(admin_url('post-new.php?post_type=' . CPT_Client::POST_TYPE)); ?>" class="page-title-action">Add New Client</a>
+          
           <p>Manage clients and set which one is currently <strong>Live Now</strong>.</p>
 
           <table class="widefat striped">
             <thead>
             <tr>
-              <th>ID</th><th>Name</th><th>Created</th><th>DOB</th><th>DOD</th><th>Live</th><th>Actions</th>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Created</th>
+              <th>DOB</th>
+              <th>DOD</th>
+              <th>Live</th>
+              <th>Actions</th>
             </tr>
             </thead>
             <tbody>

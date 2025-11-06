@@ -1,6 +1,8 @@
 <?php
 namespace KCFH\Streaming;
+use KCFH\Streaming\Admin\AdminToolbar; 
 if (!defined('ABSPATH')) exit;
+
 
 class CPT_Client {
 
@@ -12,6 +14,8 @@ class CPT_Client {
     add_action('init', [__CLASS__, 'register']);
     add_action('add_meta_boxes', [__CLASS__, 'meta_boxes']);
     add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'save_meta']);
+
+    add_action('in_admin_header', [__CLASS__, 'maybe_render_clients_toolbar']);
   }
 
   public static function register() {
@@ -30,6 +34,18 @@ class CPT_Client {
       'capability_type' => 'post',
       'map_meta_cap' => true,
     ]);
+  }
+
+    public static function maybe_render_clients_toolbar() {
+    if (!is_admin() || !current_user_can('manage_options')) return;
+    $screen = get_current_screen();
+    if (!$screen) return;
+
+    // Show on the "All Clients" table and the single edit screen
+    if ($screen->id === 'edit-' . self::POST_TYPE || $screen->id === self::POST_TYPE) {
+      // Highlight the Clients tab
+      AdminToolbar::render('clients'); // <-- correct namespaced class
+    }
   }
 
   public static function meta_boxes() {

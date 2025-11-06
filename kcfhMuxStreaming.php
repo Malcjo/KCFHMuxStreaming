@@ -57,6 +57,7 @@ require_once KCFH_STREAMING_DIR. '/includes/admin/class-dashboard.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-live.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-vod-manager.php';
 require_once KCFH_STREAMING_DIR. 'includes/class-shortcode-gallery-grid.php';
+require_once KCFH_STREAMING_DIR. 'includes/admin/class-admin-toolbar.php';
 
 
 //Hook the scheduler on init so cron hooks & the 5-min tick are registered.
@@ -93,15 +94,7 @@ add_action('admin_menu', function () {
   //\KCFH\Streaming\Admin_UI::register_menus();
 });
 
-add_action('admin_notices', function(){
-    if (!current_user_can('manage_options')) return;
-    $id   = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
-    $nxtS = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$id]);
-    $nxtE = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$id]);
-    echo '<div class="notice notice-info"><p>Live client: '.esc_html($id).
-         ' | Next start: '.($nxtS ? date_i18n('Y-m-d H:i:s', $nxtS) : '—').
-         ' | Next end: '.($nxtE ? date_i18n('Y-m-d H:i:s', $nxtE) : '—').'</p></div>';
-});
+
 
 
 //add_action('admin_post_kcfh_assign_vod', ['KCFH\Streaming\Utility_Admin', 'handle_assign_vod']);
@@ -121,6 +114,8 @@ add_action('wp_enqueue_scripts', function () {
 });
 
 
+if (defined('KCFH_DEBUGMODE') && KCFH_DEBUGMODE){
+
 // Show an admin notice telling you if the shortcode is registered
 add_action('admin_notices', function () {
   echo '<div class="notice '.(shortcode_exists('kcfh_stream_gallery') ? 'notice-success' : 'notice-error').'"><p>';
@@ -130,15 +125,14 @@ add_action('admin_notices', function () {
   echo '</p></div>';
 });
 
-// Log whether your MUX constants are defined on THIS site
-add_action('init', function () {
-  /*
-  if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
-    error_log('[KCFH] MUX constants NOT defined');
-  } else {
-    error_log('[KCFH] MUX constants present');
-  }
-*/
+add_action('admin_notices', function(){
+    if (!current_user_can('manage_options')) return;
+    $id   = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
+    $nxtS = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$id]);
+    $nxtE = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$id]);
+    echo '<div class="notice notice-info"><p>Live client: '.esc_html($id).
+         ' | Next start: '.($nxtS ? date_i18n('Y-m-d H:i:s', $nxtS) : '—').
+         ' | Next end: '.($nxtE ? date_i18n('Y-m-d H:i:s', $nxtE) : '—').'</p></div>';
 });
 
 // 1) Compute status very early so it's available for notices
@@ -168,6 +162,21 @@ add_action('admin_notices', function () {
     echo '<div class="notice notice-info"><p>KCFH cron hook status: <strong>'
          . esc_html($status) . '</strong>' . esc_html($extra) . '</p></div>';
 });
+
+
+}
+
+// Log whether your MUX constants are defined on THIS site
+add_action('init', function () {
+  /*
+  if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
+    error_log('[KCFH] MUX constants NOT defined');
+  } else {
+    error_log('[KCFH] MUX constants present');
+  }
+*/
+});
+
 
 
 
