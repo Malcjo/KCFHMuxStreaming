@@ -55,9 +55,15 @@ require_once KCFH_STREAMING_DIR. '/includes/admin/class-dashboard.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-live.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-vod-manager.php';
 
-require_once KCFH_STREAMING_DIR. 'includes/class-shortcode-kcfhgallery.php';
+//require_once KCFH_STREAMING_DIR. 'includes/class-shortcode-kcfhgallery.php';
 require_once KCFH_STREAMING_DIR. 'includes/admin/class-admin-toolbar.php';
 require_once KCFH_STREAMING_DIR. 'includes/admin/class-live-flip-service.php';
+
+//gallery code
+require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-utils.php';
+require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-grid.php';
+require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-single.php';
+require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-display.php';
 
 
 
@@ -74,7 +80,9 @@ add_action('plugins_loaded', function () {
 
     \KCFH\STREAMING\Live_Scheduler::bootstrap();
     \KCFH\Streaming\Asset_Service::init();
-    \KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
+    //\KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
+
+    \KCFH\STREAMING\Gallery_Display::bootstrap();
   
 });
 
