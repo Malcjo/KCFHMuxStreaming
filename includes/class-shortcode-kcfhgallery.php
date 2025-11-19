@@ -75,8 +75,17 @@ class Shortcode_KCFHGallery {
                     $back_url = esc_url(remove_query_arg('kcfh_client'));
                     $pbid     = esc_attr($play['playback_id']);
                     $is_live  = !empty($play['is_live']);
+                    
+                    $live_id   = (int) get_option('kcfh_live_client_id', 0);
+                    $live_pbid = (string) get_option('kcfh_live_playback_id', '');
+
+                    $client_id = (int) $client->ID;
+                    $end_utc   = (int) get_post_meta($client_id, \KCFH\Streaming\CPT_Client::META_END_AT, true);
+
+
 
                     ?>
+                    
                     <div class="kcfh-single">
                         <a class="kcfh-back" href="<?php echo $back_url; ?>">&larr; Back</a>
                         <h2 class="kcfh-single-title"><?php echo $name; ?></h2>
@@ -88,17 +97,118 @@ class Shortcode_KCFHGallery {
 
                         <!-- mux-player -->
                         <script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>
-                        <mux-player
-                          stream-type="<?php echo $is_live ? 'live' : 'on-demand'; ?>"
-                          playback-id="<?php echo $pbid; ?>"
-                          style="width:100%;max-width:1080px;height:auto;"
-                          thumbnail-time="2"
-                          playsinline
-                          crossorigin
-                          default-hidden-captions
-                        ></mux-player>
+                        <div id="kcfhPlayerWrap" 
+                        data-client-id="<?php echo (int)$client_id; ?>"
+                        data-end-utc="<?php echo (int)$end_utc;?>"
+                        data-ajax-url="<?php echo esc_url( admin_url('admin-ajax.php') ); ?>"
+                        data-ajax-action="<?php echo esc_attr( \KCFH\Streaming\Live_Flip_Service::AJAX_CHECK ); ?>"
+                        data-live-stream-id="<?php echo esc_attr( defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '' ); ?>"
+                        >
+                        
+                            <mux-player id="kcfhPlayer"
+                            stream-type="<?php echo $is_live ? 'live' : 'on-demand'; ?>"
+                            playback-id="<?php echo $pbid; ?>"
+                            style="width:100%;max-width:1080px;height:auto;"
+                            thumbnail-time="2"
+                            playsinline
+                            crossorigin
+                            default-hidden-captions
+                            ></mux-player>
+                        </div>
                     </div>
+                        <script>
+                            (function(){
+                                //get the mux player
+                                const wrap = document.getElementById('kcfhPlayerWrap');
+                                if(!wrap) return;
+
+                                //get the client Id and end dateTime
+                                const clientId = wrap.dataset.clientId;
+                                //read the data-end-utc attribute from the mux player, default to 0 at base-10(decimal)
+                                const endUtc = parseInt(wrap.dataset.endUtc || '0', 10);
+
+                                const ajaxUrl       = wrap.dataset.ajaxUrl;
+                                const ajaxAction    = wrap.dataset.ajaxAction;     // e.g. kcfh_check_vod
+                                const liveStreamId  = wrap.dataset.liveStreamId || '';
+
+                                //debug
+
+
+                                //helper to switch the mux player from LIVE to 'on-demand'
+                                function swapToVOD(pb){
+                                    const p = document.getElementById('kcfhPlayer');
+                                    if (!p){ 
+                                        console.warn('[KCFH] mux-player not found; reloading page'); 
+                                        location.reload(); 
+                                        return;
+                                    }
+                                    // Update attributes in the mux webplayer
+                                    p.setAttribute('stream-type','on-demand');
+                                    p.setAttribute('playback-id', pb);
+                                    //Force the wb component to re-init
+                                    const clone = p.cloneNode(true);
+                                    p.replaceWith(clone);
+                                }
+
+                                async function checkVOD(){
+                                    try{
+                                        //get Url to Wordpress' AJAX endpoint
+                                        //const url = new URL('<?php //echo esc_url(admin_url('admin-ajax.php')); ?>');
+                                        const url = new URL(wrap.dataset.ajaxUrl);
+
+                                        //add the action name so wordpress knows which handler to run
+                                        //url.searchParams.set('action', '<?php //echo \KCFH\Streaming\Live_Flip_Service::AJAX_CHECK; ?>');
+                                        url.searchParams.set('action', wrap.dataset.ajaxAction); // e.g. kcfh_check_vod
+
+                                        //tell the server which client we're connecting to
+                                        url.searchParams.set('client_id', clientId);
+
+
+                                        // fetch GET credentials sends cookies if any needed
+                                        const r = await fetch(url.toString(), {credentials:'same-origin'});
+                                        const text = await r.text();
+                                        let data
+                                        try { data = JSON.parse(text); } catch(e) {
+                                            console.warn('JSON parse error:', e);
+                                            console.groupEnd();
+                                            return false;
+                                        }
+                                        console.log('parsed:', data);
+
+                                            //only proceed if the response has the fields we need
+                                            /*
+                                                the PHP handler Live_Flip_Service::AJAX_CHECK should return something like
+                                                {
+                                                    "success": true,
+                                                    "data": { "ready": true, "playback_id": "abcd1234" }
+                                                }
+                                            */
+                                        if(data && data.success && data.data && data.data.ready && data.data.playback_id){
+                                            swapToVOD(data.data.playback_id);
+                                            return true;
+                                        }
+                                    }
+                                    catch (e){
+                                        console.warn('[KCFH] Poll error:', e);
+                                    }
+                                    return false;
+                                }
+
+                                function startPolling(){
+                                    const tryOnce = () => checkVOD().then(ok => { if (!ok) setTimeout(tryOnce, 15000);});
+                                    tryOnce();
+                                }
+
+                                if(!endUtc || (Date.now()/1000)  >= endUtc){
+                                    startPolling();
+                                } else{
+                                    const delayMs = Math.max(0,(endUtc*1000) - Date.now() + 5000);
+                                    setTimeout(startPolling, delayMs);
+                                }
+                            })();
+                        </script>
                     <?php
+
                 } else {
                     echo '<p class="kcfh-empty">Video unavailable for this client.</p>';
                 }
@@ -258,4 +368,6 @@ class Shortcode_KCFHGallery {
         $url = (is_ssl() ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
         return remove_query_arg('kcfh_client', $url);
     }
+
+
 }

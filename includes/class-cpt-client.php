@@ -303,6 +303,15 @@ class CPT_Client {
     update_post_meta($post_id, self::META_START_AT, $startUtc);
     update_post_meta($post_id, self::META_END_AT,   $endUtc);
 
+    // Schedule/unschedule the live→VOD flip based on end time
+    if (class_exists('\KCFH\Streaming\Live_Flip_Service')) {
+        if ($endUtc) {
+            \KCFH\Streaming\Live_Flip_Service::schedule_flip((int)$post_id, (int)$endUtc);
+        } else {
+            \KCFH\Streaming\Live_Flip_Service::unschedule_flip((int)$post_id);
+        }
+    }
+
     // (Re)Schedule start/end one-offs
     \KCFH\Streaming\Live_Scheduler::reschedule_for_client($post_id, $startUtc, $endUtc);
 

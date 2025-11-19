@@ -54,8 +54,11 @@ require_once KCFH_STREAMING_DIR. '/includes/admin/class-menu.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-dashboard.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-live.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-vod-manager.php';
-require_once KCFH_STREAMING_DIR. 'includes/class-shortcode-gallery-grid.php';
+
+require_once KCFH_STREAMING_DIR. 'includes/class-shortcode-kcfhgallery.php';
 require_once KCFH_STREAMING_DIR. 'includes/admin/class-admin-toolbar.php';
+require_once KCFH_STREAMING_DIR. 'includes/admin/class-live-flip-service.php';
+
 
 
 //Hook the scheduler on init so cron hooks & the 5-min tick are registered.
@@ -67,9 +70,11 @@ add_action('plugins_loaded', function () {
     \KCFH\Streaming\CPT_Client::init();
     
     \KCFH\Streaming\Admin_UI::boot();
+    \KCFH\Streaming\Live_Flip_Service::boot();
+
     \KCFH\STREAMING\Live_Scheduler::bootstrap();
     \KCFH\Streaming\Asset_Service::init();
-    \KCFH\Streaming\Shortcode_Gallery_Grid::init();
+    \KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
   
 });
 
