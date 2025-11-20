@@ -17,14 +17,15 @@ final class AdminToolbar {
             'dashboard'  => menu_page_url('kcfh_streaming', false),
             'vod'        => menu_page_url('kcfh_vod_manager', false),
             'clients'        => menu_page_url(All_Clients_Page::SLUG, false),
-            //'clients'    => admin_url('edit.php?post_type=' . CPT_Client::POST_TYPE),
+            'add_client'    => admin_url('post-new.php?post_type=' . CPT_Client::POST_TYPE),
         ];
 
-        // Label order (controls display order)
+        // Label order (controls display order and content)
         $items = [
             'dashboard'  => 'Dashboard',
             'vod'        => 'VOD Manager',
             'clients'    => 'Clients',
+            'add_client' => "+ Add Client",
         ];
         ?>
         <style>
@@ -55,7 +56,9 @@ final class AdminToolbar {
 
         <div class="kcfh-admin-toolbar">
           <div class="kcfh-toolbar-inner">
-            <?php foreach ($items as $key => $label): 
+            <?php 
+            foreach ($items as $key => $label)
+              { 
               $is_active = ($key === $active);
               $class     = 'kcfh-btn' . ($is_active ? ' primary' : '');
               $url       = $urls[$key] ?? '#';
@@ -65,7 +68,7 @@ final class AdminToolbar {
                  <?php echo $is_active ? 'aria-current="page"' : ''; ?>>
                  <?php echo esc_html($label); ?>
               </a>
-            <?php endforeach; ?>
+            <?php } ?>
           </div>
         </div>
         <?php
