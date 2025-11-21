@@ -1,9 +1,13 @@
 <?php
 namespace KCFH\Streaming;
+use KCFH\Streaming\Admin\Constants; 
+
 if (!defined('ABSPATH')) exit;
 
 
+
 class Admin_Util {
+
   public static function handle_assign_vod() {
     // must be logged-in
     if ( ! is_user_logged_in() ) {
@@ -79,6 +83,114 @@ class Admin_Util {
         <?php
       }
     }
+  
+
+  public static function DownloadVOD(array $a): void {
+
+      if (empty($a['id'])) {
+          return; // nothing to render
+      }
+
+      $asset_id        = (string) $a['id'];
+      $nonce_vod       = wp_create_nonce(Constants::NONCE_VOD_ACTIONS);
+      $preparing_asset = get_option('kcfh_mp4_preparing_asset', '');
+
+      // Build URLs
+      $enable_highest_url = admin_url(
+          'admin-post.php?action=kcfh_enable_mp4&asset_id='
+          . rawurlencode($asset_id)
+          . '&res=highest&_wpnonce=' . $nonce_vod
+      );
+      $enable_1080p_url = admin_url(
+          'admin-post.php?action=kcfh_enable_mp4&asset_id='
+          . rawurlencode($asset_id)
+          . '&res=1080p&_wpnonce=' . $nonce_vod
+      );
+      $enable_720p_url = admin_url(
+          'admin-post.php?action=kcfh_enable_mp4&asset_id='
+          . rawurlencode($asset_id)
+          . '&res=720p&_wpnonce=' . $nonce_vod
+      );
+      $download_url = admin_url(
+          'admin-post.php?action=kcfh_download_mp4&asset_id='
+          . rawurlencode($asset_id)
+          . '&_wpnonce=' . $nonce_vod
+      );
+
+      // Is this asset currently marked as "preparing"?
+      $is_preparing = ($preparing_asset && $preparing_asset === $asset_id);
+
+      $btn_class = 'button button-small';
+      $btn_label = 'Download MP4';
+      $btn_extra = '';
+
+      if ($is_preparing) {
+          $btn_class .= ' kcfh-mp4-preparing';
+          $btn_label  = 'Preparing…';
+          $btn_extra  = ' aria-disabled="true"';
+      }
+
+      echo '<td>';
+      echo '<label>Set Download quality</label> ';
+      echo '<select onchange="if(this.value){window.location.href=this.value;}">';
+      echo '<option value="' . esc_url($enable_highest_url) . '">Enable MP4 (Highest)</option>';
+      echo '<option value="' . esc_url($enable_1080p_url)  . '">Enable MP4 (1080p)</option>';
+      echo '<option value="' . esc_url($enable_720p_url)   . '">Enable MP4 (720p)</option>';
+      echo '</select> ';
+
+      echo '<a class="' . esc_attr($btn_class) . '" href="' . esc_url($download_url) . '"' . $btn_extra . '>'
+        . esc_html($btn_label)
+        . '</a>';
+
+      echo '</td>';
   }
 
+
+
+  public static function DownloadVODForClient($client): void
+  {
+      // Accept either WP_Post or ID
+      $client_id = is_object($client) ? (int) $client->ID : (int) $client;
+      if (!$client_id) {
+          echo '<span class="kcfh-no-vod">No video</span>';
+          return;
+      }
+
+      // Get the attached Mux asset id for this client
+      $asset_id = (string) get_post_meta($client_id, '_kcfh_asset_id', true);
+
+      if (!$asset_id) {
+          echo '<span class="kcfh-no-vod">No video attached</span>';
+          return;
+      }
+
+      $nonce_vod       = wp_create_nonce(Constants::NONCE_VOD_ACTIONS);
+      $preparing_asset = get_option('kcfh_mp4_preparing_asset', '');
+
+      $download_url = admin_url(
+          'admin-post.php?action=kcfh_download_mp4&asset_id='
+          . rawurlencode($asset_id)
+          . '&_wpnonce=' . $nonce_vod
+      );
+
+      // Is this asset currently marked as "preparing"?
+      $is_preparing = ($preparing_asset && $preparing_asset === $asset_id);
+
+      $btn_class = 'button button-small';
+      $btn_label = 'Download MP4';
+      $btn_extra = '';
+
+      if ($is_preparing) {
+          $btn_class .= ' kcfh-mp4-preparing';
+          $btn_label  = 'Preparing…';
+          $btn_extra  = ' aria-disabled="true"';
+      }
+
+      echo '<a class="' . esc_attr($btn_class) . '" href="' . esc_url($download_url) . '"' . $btn_extra . '>'
+        . esc_html($btn_label)
+        . '</a>';
+  }
+
+
+}
 ?>

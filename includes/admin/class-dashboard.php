@@ -4,6 +4,7 @@ namespace KCFH\Streaming\Admin;
 use KCFH\STREAMING\Admin_Util;
 use KCFH\Streaming\CPT_Client;
 
+
 if (!defined('ABSPATH')) exit;
 
 final class Dashboard {
@@ -34,6 +35,8 @@ final class Dashboard {
               <th>DOD</th>
               <th>Live</th>
               <th>Actions</th>
+              <th>Set/Unset Live</th>
+              <th>Download Video</th>
             </tr>
             </thead>
             <tbody>
@@ -54,10 +57,9 @@ final class Dashboard {
                 <td><?php echo esc_html($dob); ?></td>
                 <td><?php echo esc_html($dod); ?></td>
                 <td><?php echo $live_badge; ?></td>
-                <td>
-                  <a href="<?php echo esc_url($edit_link); ?>">Edit</a> •
-                  <?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?>
-                </td>
+                <td><b><a href="<?php echo esc_url($edit_link); ?>">Edit</a></b></td>
+                <td><?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?></td>
+                <td><?php Admin_Util::DownloadVODForClient($p); ?></td>
               </tr>
             <?php endforeach; ?>
             </tbody>

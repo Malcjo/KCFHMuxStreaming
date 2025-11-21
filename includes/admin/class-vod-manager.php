@@ -3,6 +3,7 @@ namespace KCFH\Streaming\Admin;
 
 use KCFH\Streaming\Asset_Service;
 use KCFH\Streaming\CPT_Client;
+use KCFH\Streaming\Admin_Util;
 
 if (!defined('ABSPATH')) exit;
 
@@ -21,6 +22,10 @@ final class Vod_Manager {
         $res = Asset_Service::fetch_assets(['limit'=>50, 'order'=>'created_at', 'direction'=>'desc', 'status'=>'ready'], 30);
 
 
+
+
+        echo '<div class="wrap"><h1>VOD Manager</h1>';
+
         echo '<style>
         .kcfh-mp4-preparing {
             opacity: 0.5;
@@ -28,8 +33,6 @@ final class Vod_Manager {
             cursor: not-allowed;
         }
         </style>';
-
-        echo '<div class="wrap"><h1>VOD Manager</h1>';
 
         if (is_wp_error($res)) {
             echo '<p style="color:#c00">' . esc_html($res->get_error_message()) . '</p></div>';
@@ -104,40 +107,7 @@ final class Vod_Manager {
             echo '</form>';
             echo '</td>';
 
-            // Download column
-            $nonce_vod = wp_create_nonce(Constants::NONCE_VOD_ACTIONS);
-            $enable_highest_url = admin_url('admin-post.php?action=kcfh_enable_mp4&asset_id=' . rawurlencode($a['id']) . '&res=highest&_wpnonce=' . $nonce_vod);
-            $enable_1080p_url  = admin_url('admin-post.php?action=kcfh_enable_mp4&asset_id=' . rawurlencode($a['id']) . '&res=1080p&_wpnonce=' . $nonce_vod);
-            $enable_720p_url   = admin_url('admin-post.php?action=kcfh_enable_mp4&asset_id=' . rawurlencode($a['id']) . '&res=720p&_wpnonce=' . $nonce_vod);
-            $download_url      = admin_url('admin-post.php?action=kcfh_download_mp4&asset_id=' . rawurlencode($a['id']) . '&_wpnonce=' . $nonce_vod);
-
-            echo '<td>';
-            echo '<label>Set Download quality</label> ';
-            echo '<select onchange="if(this.value){window.location.href=this.value;}">';
-            echo '<option value="'.esc_url($enable_highest_url).'">Enable MP4 (Highest)</option>';
-            echo '<option value="'.esc_url($enable_1080p_url).'">Enable MP4 (1080p)</option>';
-            echo '<option value="'.esc_url($enable_720p_url).'">Enable MP4 (720p)</option>';
-            echo '</select> ';
-
-            // Is this asset currently marked as "preparing"?
-            $is_preparing = ($preparing_asset && $preparing_asset === $a['id']);
-
-            $btn_class = 'button button-small';
-            $btn_label = 'Download';
-            $btn_extra = '';
-
-            if ($is_preparing) {
-                $btn_class .= ' kcfh-mp4-preparing';
-                $btn_label  = 'Preparing…';
-                $btn_extra  = ' aria-disabled="true"';
-            }
-
-            echo '<a class="' . esc_attr($btn_class) . '" href="' . esc_url($download_url) . '"' . $btn_extra . '>'
-            . esc_html($btn_label)
-            . '</a>';
-
-            echo '</td>';
-
+            Admin_Util::DownloadVOD($a);
 
             echo '</tr>';
         }
