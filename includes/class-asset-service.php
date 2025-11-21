@@ -362,5 +362,64 @@ public static function suggest_filename_from_raw(array $raw): string {
     return $base . '.mp4';
 }
 
+public static function update_asset_title(string $asset_id, string $title) {
+    $asset_id = trim($asset_id);
+    $title    = trim($title);
+
+    if (!$asset_id || $title === '') {
+        return new \WP_Error('kcfh_mux_no_asset', 'Missing asset_id or title for update.');
+    }
+
+    $token_id     = defined('MUX_TOKEN_ID')     ? MUX_TOKEN_ID     : '';
+    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+
+    if (!$token_id || !$token_secret) {
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+    }
+
+    $url  = self::API_BASE . '/assets/' . rawurlencode($asset_id);
+
+    $args = [
+        'method'  => 'PATCH',
+        'headers' => [
+            'Authorization' => 'Basic ' . base64_encode($token_id . ':' . $token_secret),
+            'Content-Type'  => 'application/json',
+            'Accept'        => 'application/json',
+        ],
+        'body'    => wp_json_encode([
+            'meta' => [
+                'title' => $title,
+                // If you ever want to also set external_id etc, you can add:
+                // 'external_id' => 'client-' . $asset_id,
+                // 'creator_id'  => 'kcfh',
+            ],
+        ]),
+        'timeout' => 30,
+    ];
+
+    $res = wp_remote_request($url, $args);
+    if (is_wp_error($res)) {
+        return $res;
+    }
+
+    $code = wp_remote_retrieve_response_code($res);
+    $body = wp_remote_retrieve_body($res);
+
+    if ($code < 200 || $code >= 300) {
+        return new \WP_Error(
+            'kcfh_mux_http',
+            'Mux API HTTP ' . $code . ': ' . $body
+        );
+    }
+
+    // Clear any cached copy of this asset (optional but helpful)
+    $cache_key = KCFH_STREAMING_CACHE_PREFIX . 'asset_' . md5($asset_id);
+    delete_transient($cache_key);
+
+    return json_decode($body, true);
+}
+
+
+
 
 }

@@ -1,6 +1,9 @@
 <?php
 namespace KCFH\Streaming;
 
+use KCFH\Streaming\Asset_Service;
+use KCFH\Streaming\CPT_Client;
+
 if (!defined('ABSPATH')) exit;
 
 class Live_Flip_Service {
@@ -42,18 +45,28 @@ class Live_Flip_Service {
     $existing_pb    = get_post_meta($client_id, '_kcfh_playback_id', true);
     if ($existing_asset && $existing_pb) return;
 
-    // Find newest READY asset for this client (using passthrough "client-<id>")
     $asset = self::find_latest_asset_for_client($client_id);
     if (!$asset) return;
 
-    update_post_meta($client_id, '_kcfh_asset_id', $asset['id']);
-    if (!empty($asset['playback_ids'][0]['id'])) {
-      update_post_meta($client_id, '_kcfh_playback_id', $asset['playback_ids'][0]['id']);
+    // Rename asset on Mux to client's title
+    $client_title = get_the_title($client_id);
+    if (!empty($client_title)) {
+        $rename = Asset_Service::update_asset_title($asset['id'], $client_title);
+        if (is_wp_error($rename)) {
+            error_log('[KCFH] Failed to update Mux title for asset '
+                . $asset['id'] . ': ' . $rename->get_error_message());
+        }
     }
 
-    // (Optional) Unset current live client so front-ends stop thinking it’s live
-    $current_live = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
-    if ($current_live === $client_id) update_option(Admin_UI::OPT_LIVE_CLIENT, 0);
+    update_post_meta($client_id, '_kcfh_asset_id', $asset['id']);
+    if (!empty($asset['playback_ids'][0]['id'])) {
+        update_post_meta($client_id, '_kcfh_playback_id', $asset['playback_ids'][0]['id']);
+    }
+
+    if (!empty($client_title)) {
+        update_post_meta($client_id, '_kcfh_vod_title', sanitize_text_field($client_title));
+    }
+
   }
 
       /**
@@ -73,17 +86,42 @@ class Live_Flip_Service {
         if (is_wp_error($resp) || empty($resp['assets'][0])) return '';
 
         $asset = $resp['assets'][0];
+
         // Get playback id
         $pb = Asset_Service::first_public_playback_id($asset);
         if (!$pb) return '';
 
-        // Persist to client
-        update_post_meta($client_id, '_kcfh_asset_id',     $asset['id']);
-        update_post_meta($client_id, '_kcfh_playback_id',  $pb);
-        update_post_meta($client_id, '_kcfh_vod_title',    !empty($asset['title']) ? sanitize_text_field($asset['title']) : '');
-        update_post_meta($client_id, '_kcfh_external_id',  !empty($asset['external_id']) ? sanitize_text_field($asset['external_id']) : '');
+        // Client title for naming
+        $client_title = get_the_title($client_id);
+
+        // Try to rename the Mux asset to match the client title
+        if (!empty($client_title)) {
+            $rename = Asset_Service::update_asset_title($asset['id'], $client_title);
+            if (is_wp_error($rename)) {
+                // Don’t break anything if rename fails – just log it.
+                error_log('[KCFH] Failed to update Mux title for asset '
+                    . $asset['id'] . ': ' . $rename->get_error_message());
+            }
+        }
+
+        // Persist to client (use client title as VOD title if available)
+        update_post_meta($client_id, '_kcfh_asset_id',    $asset['id']);
+        update_post_meta($client_id, '_kcfh_playback_id', $pb);
+        update_post_meta(
+            $client_id,
+            '_kcfh_vod_title',
+            !empty($client_title)
+                ? sanitize_text_field($client_title)
+                : (!empty($asset['title']) ? sanitize_text_field($asset['title']) : '')
+        );
+        update_post_meta(
+            $client_id,
+            '_kcfh_external_id',
+            !empty($asset['external_id']) ? sanitize_text_field($asset['external_id']) : ''
+        );
 
         return $pb;
+
     }
 
       /** AJAX poll from front-end to know when VOD is ready */
