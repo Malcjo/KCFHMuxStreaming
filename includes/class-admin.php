@@ -2,6 +2,8 @@
 namespace KCFH\Streaming;
 if (!defined('ABSPATH')) exit;
 
+use KCFH\Streaming\Admin\Vod_Manager;
+
 class Admin_UI {
   public const OPT_LIVE_CLIENT = 'kcfh_live_client_id';
   public const OPT_LIVE_PLAYBACK = 'kcfh_live_playback_id';
@@ -29,9 +31,12 @@ class Admin_UI {
         if (!class_exists(__NAMESPACE__ . '\\Live_Service')) {
             require_once __DIR__ . '/class-live-service.php';
         }
-        if (!class_exists(__NAMESPACE__ . '\\Utility_Admin')) {
+        if (!class_exists(__NAMESPACE__ . '\\Admin_Util')) {
             require_once __DIR__ . '/class-utility-admin.php';
         }
+
+        add_action('wp_ajax_kcfh_prepare_mp4', [Vod_Manager::class, 'ajax_prepare_mp4']);
+        add_action('wp_ajax_kcfh_check_mp4_status', [Vod_Manager::class, 'ajax_check_mp4_status']);
 
         // Hand off to the admin menu/router
         \KCFH\Streaming\Admin\Menu::boot();

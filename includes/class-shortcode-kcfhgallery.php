@@ -153,11 +153,9 @@ class Shortcode_KCFHGallery {
                                 async function checkVOD(){
                                     try{
                                         //get Url to Wordpress' AJAX endpoint
-                                        //const url = new URL('<?php //echo esc_url(admin_url('admin-ajax.php')); ?>');
                                         const url = new URL(wrap.dataset.ajaxUrl);
 
                                         //add the action name so wordpress knows which handler to run
-                                        //url.searchParams.set('action', '<?php //echo \KCFH\Streaming\Live_Flip_Service::AJAX_CHECK; ?>');
                                         url.searchParams.set('action', wrap.dataset.ajaxAction); // e.g. kcfh_check_vod
 
                                         //tell the server which client we're connecting to

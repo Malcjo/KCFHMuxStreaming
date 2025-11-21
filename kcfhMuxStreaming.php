@@ -88,7 +88,7 @@ add_action('plugins_loaded', function () {
 
 add_action('utilities_loaded', function(){
   //
-  \KCFH\Streaming\Utility_Admin::init();
+  \KCFH\Streaming\Admin_Util::init();
   \KCFH\Streaming\Utility_Mux::init();
 
 });
@@ -105,7 +105,7 @@ add_action('admin_menu', function () {
 
 
 
-//add_action('admin_post_kcfh_assign_vod', ['KCFH\Streaming\Utility_Admin', 'handle_assign_vod']);
+//add_action('admin_post_kcfh_assign_vod', ['KCFH\Streaming\Admin_Util', 'handle_assign_vod']);
 //add_action('admin_post_kcfh_assign_vod', ['\\KCFH\\Streaming\\Admin_UI', 'handle_assign_vod']);
 
 add_filter('wp_resource_hints', function($hints, $relation){

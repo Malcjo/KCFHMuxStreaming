@@ -12,12 +12,22 @@ final class Vod_Manager {
         if (!current_user_can('manage_options')) wp_die('Permission denied');
 
         AdminToolbar::render('vod');
+        $preparing_asset = get_option('kcfh_mp4_preparing_asset', '');
 
         $notice = isset($_GET['kcfh_notice']) ? sanitize_text_field($_GET['kcfh_notice']) : '';
         $msg    = isset($_GET['kcfh_msg']) ? wp_kses_post(wp_unslash($_GET['kcfh_msg'])) : '';
         if ($notice) Notices::show($notice, $msg);
 
         $res = Asset_Service::fetch_assets(['limit'=>50, 'order'=>'created_at', 'direction'=>'desc', 'status'=>'ready'], 30);
+
+
+        echo '<style>
+        .kcfh-mp4-preparing {
+            opacity: 0.5;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+        </style>';
 
         echo '<div class="wrap"><h1>VOD Manager</h1>';
 
@@ -108,8 +118,26 @@ final class Vod_Manager {
             echo '<option value="'.esc_url($enable_1080p_url).'">Enable MP4 (1080p)</option>';
             echo '<option value="'.esc_url($enable_720p_url).'">Enable MP4 (720p)</option>';
             echo '</select> ';
-            echo '<a class="button button-small" href="'.esc_url($download_url).'">Download MP4</a>';
+
+            // Is this asset currently marked as "preparing"?
+            $is_preparing = ($preparing_asset && $preparing_asset === $a['id']);
+
+            $btn_class = 'button button-small';
+            $btn_label = 'Download';
+            $btn_extra = '';
+
+            if ($is_preparing) {
+                $btn_class .= ' kcfh-mp4-preparing';
+                $btn_label  = 'Preparing…';
+                $btn_extra  = ' aria-disabled="true"';
+            }
+
+            echo '<a class="' . esc_attr($btn_class) . '" href="' . esc_url($download_url) . '"' . $btn_extra . '>'
+            . esc_html($btn_label)
+            . '</a>';
+
             echo '</td>';
+
 
             echo '</tr>';
         }
@@ -161,16 +189,30 @@ final class Vod_Manager {
 
         $ready_name = Asset_Service::pick_ready_static_name_from_raw($raw);
         if ($ready_name) {
+            // If this asset was previously marked as "preparing", clear that flag.
+            if (get_option('kcfh_mp4_preparing_asset') === $asset_id) {
+                delete_option('kcfh_mp4_preparing_asset');
+            }
+
             $save_as = Asset_Service::suggest_filename_from_raw($raw);
             $url     = Asset_Service::build_static_download_url($playback_id, $ready_name, $save_as);
             wp_redirect($url);
             exit;
         }
 
+        // Not ready yet → ask Mux to prepare the MP4
         $req = Asset_Service::create_static_rendition($asset_id, 'highest');
         if (is_wp_error($req)) {
             Notices::redirect_vod('mux_err', 'Mux error: ' . esc_html($req->get_error_message()));
         }
-        Notices::redirect_vod('mp4_wait', 'Preparing the MP4 now. Please click “Download MP4” again once it is ready.');
+
+        // Remember which asset we requested, so we can grey out its button.
+        update_option('kcfh_mp4_preparing_asset', $asset_id);
+
+        Notices::redirect_vod(
+            'mp4_wait',
+            'Preparing the MP4 now. Please click “Download MP4” again once it is ready.'
+        );
+
     }
 }

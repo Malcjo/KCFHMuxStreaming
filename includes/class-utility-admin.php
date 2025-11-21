@@ -3,7 +3,7 @@ namespace KCFH\Streaming;
 if (!defined('ABSPATH')) exit;
 
 
-class Utility_Admin {
+class Admin_Util {
   public static function handle_assign_vod() {
     // must be logged-in
     if ( ! is_user_logged_in() ) {
@@ -66,7 +66,19 @@ class Utility_Admin {
     wp_safe_redirect( admin_url('admin.php?page=kcfh_vod_manager&kcfh_notice=assigned') );
     exit;
   }
-}
+
+  public static function DisplayIsLive( $is_live, $unset_url, $set_url){
+    if($is_live){
+      ?>
+      <a href="<?php echo esc_url($unset_url); ?>">Unset Live</a>
+      <?php
+      }
+      else{
+        ?>
+        <a href="<?php echo esc_url($set_url); ?>">Set Live</a>
+        <?php
+      }
+    }
+  }
 
 ?>
-

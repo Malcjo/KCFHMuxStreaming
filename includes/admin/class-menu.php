@@ -17,7 +17,7 @@ final class Menu {
         add_action('admin_post_kcfh_download_mp4',         [Vod_Manager::class, 'handle_download_mp4']);
 
         // keep your existing assign_vod handler
-        add_action('admin_post_kcfh_assign_vod', ['KCFH\\Streaming\\Utility_Admin', 'handle_assign_vod']);
+        add_action('admin_post_kcfh_assign_vod', ['KCFH\\Streaming\\Admin_Util', 'handle_assign_vod']);
     }
 
     public static function register_menus(): void {

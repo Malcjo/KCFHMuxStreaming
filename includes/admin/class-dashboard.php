@@ -1,6 +1,7 @@
 <?php
 namespace KCFH\Streaming\Admin;
 
+use KCFH\STREAMING\Admin_Util;
 use KCFH\Streaming\CPT_Client;
 
 if (!defined('ABSPATH')) exit;
@@ -43,7 +44,7 @@ final class Dashboard {
                 $live_badge = $is_live ? '<span style="color:#0a0;font-weight:600;">Live Now</span>' : '—';
                 $edit_link = get_edit_post_link($p->ID, '');
                 $nonce = wp_create_nonce('kcfh_set_live_' . $p->ID);
-                $toggle_url = admin_url('admin-post.php?action=kcfh_set_live&client_id=' . $p->ID . '&_wpnonce=' . $nonce);
+                $set_url = admin_url('admin-post.php?action=kcfh_set_live&client_id=' . $p->ID . '&_wpnonce=' . $nonce);
                 $unset_url  = admin_url('admin-post.php?action=kcfh_set_live&client_id=0&_wpnonce=' . wp_create_nonce('kcfh_set_live_0'));
             ?>
               <tr>
@@ -55,11 +56,7 @@ final class Dashboard {
                 <td><?php echo $live_badge; ?></td>
                 <td>
                   <a href="<?php echo esc_url($edit_link); ?>">Edit</a> •
-                  <?php if ($is_live): ?>
-                    <a href="<?php echo esc_url($unset_url); ?>">Unset Live</a>
-                  <?php else: ?>
-                    <a href="<?php echo esc_url($toggle_url); ?>">Set Live</a>
-                  <?php endif; ?>
+                  <?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?>
                 </td>
               </tr>
             <?php endforeach; ?>

@@ -1,6 +1,7 @@
 <?php
 namespace KCFH\Streaming\Admin;
 
+use KCFH\STREAMING\Admin_Util;
 use KCFH\Streaming\CPT_Client;
 
 if (!defined('ABSPATH')) exit;
@@ -151,7 +152,7 @@ final class All_Clients_Page {
             $nonce_live = wp_create_nonce('kcfh_set_live_' . $p->ID);
             $set_url    = admin_url('admin-post.php?action=kcfh_set_live&client_id=' . (int)$p->ID . '&_wpnonce=' . $nonce_live);
             $unset_url  = admin_url('admin-post.php?action=kcfh_set_live&client_id=0&_wpnonce=' . wp_create_nonce('kcfh_set_live_0'));
-            ?>
+            ?> 
             <tr>
               <td><?php echo (int)$p->ID; ?></td>
               <td><?php echo esc_html(get_the_title($p)); ?></td>
@@ -161,11 +162,9 @@ final class All_Clients_Page {
               <td><?php echo $is_live ? '<span class="kcfh-badge kcfh-badge--live">Live Now</span>' : '—'; ?></td>
               <td class="kcfh-actions">
                 <a href="<?php echo esc_url($edit_link); ?>">Edit</a>
-                <?php if ($is_live): ?>
-                  • <a href="<?php echo esc_url($unset_url); ?>">Unset Live</a>
-                <?php else: ?>
-                  • <a href="<?php echo esc_url($set_url); ?>">Set Live</a>
-                <?php endif; ?>
+                <?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?>
+                
+
               </td>
             </tr>
             <?php

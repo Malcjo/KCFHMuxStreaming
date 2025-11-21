@@ -28,7 +28,7 @@ class Admin_UI {
         if (!class_exists(__NAMESPACE__ . '\\Live_Service')) {
             require_once __DIR__ . '/class-live-service.php';
         }
-        if (!class_exists(__NAMESPACE__ . '\\Utility_Admin')) {
+        if (!class_exists(__NAMESPACE__ . '\\Admin_Util')) {
             require_once __DIR__ . '/class-utility-admin.php';
         }
 
@@ -42,7 +42,7 @@ class Admin_UI {
     //requests adn functions
     add_action('admin_post_kcfh_set_live',           [__CLASS__, 'handle_set_live']);
     add_action('admin_post_kcfh_save_live_settings', [__CLASS__, 'handle_save_live_settings']);
-    add_action('admin_post_kcfh_assign_vod',         ['KCFH\Streaming\Utility_Admin', 'handle_assign_vod']);
+    add_action('admin_post_kcfh_assign_vod',         ['KCFH\Streaming\Admin_Util', 'handle_assign_vod']);
     add_action('admin_post_kcfh_set_reconnect_window', [__CLASS__, 'handle_set_reconnect_window']);
     add_action('admin_post_kcfh_enable_mp4',  [__CLASS__, 'handle_enable_mp4']);
     add_action('admin_post_kcfh_download_mp4', [__CLASS__, 'handle_download_mp4']);
