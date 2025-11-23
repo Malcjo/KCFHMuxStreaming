@@ -76,31 +76,19 @@ class CPT_Client {
 
   public static function render_meta($post) {
     wp_nonce_field('kcfh_client_save', 'kcfh_client_nonce');
-
-
-
-
     $asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
-    
-    
     ?>
-
     <style>
       .kcfh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:800px}
     </style>
 
     <div class="kcfh-grid">
+
       <?php 
         self::render_client_details($post);
         self::render_stream_timeframe_metabox($post); 
       ?>
-
-      
   </br>
-
-
-
-
 <?php
   // Current selection
   $current_asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
@@ -128,9 +116,22 @@ class CPT_Client {
     $aid = get_post_meta($cid, '_kcfh_asset_id', true);
     if ($aid) $assigned_ids[$aid] = (int)$cid;
   }
+    $playback   = get_post_meta($post->ID, '_kcfh_playback_id', true);
+    $vod_title  = get_post_meta($post->ID, '_kcfh_vod_title', true);
+    $ext_id     = get_post_meta($post->ID, '_kcfh_external_id', true);
 ?>
-
-<p>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>
+<mux-player 
+  id="kcfhPlayer"
+  stream-type="on-demand"
+  playback-id="<?php echo($playback); ?>"
+  style="width:100%;max-width:1080px;height:auto;"
+  thumbnail-time="2"
+  playsinline
+  crossorigin
+  default-hidden-captions
+></mux-player>   
+<div>
   <label for="kcfh_asset_id">Primary VOD Asset</label><br>
   <select id="kcfh_asset_id" name="kcfh_asset_id" class="widefat">
     <option value="">— Unassigned —</option>
@@ -151,15 +152,14 @@ class CPT_Client {
     <?php endif; ?>
   </select>
   <br><small>Select a Mux asset by name; we’ll save the Asset ID and pull playback/meta automatically.</small>
-</p>
+      </div>
+      
     </div>
 
     <p><small>Use the Featured Image box for the profile photo.</small></p>
     <?php
 
-    $playback   = get_post_meta($post->ID, '_kcfh_playback_id', true);
-    $vod_title  = get_post_meta($post->ID, '_kcfh_vod_title', true);
-    $ext_id     = get_post_meta($post->ID, '_kcfh_external_id', true);
+
 
     ?>
     <hr>
@@ -190,6 +190,7 @@ class CPT_Client {
     }
 
   }
+
 
   public static function render_stream_timeframe_metabox($post) {
     wp_nonce_field('kcfh_stream_window', 'kcfh_stream_window_nonce');
