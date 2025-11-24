@@ -25,14 +25,22 @@ class Gallery_Grid
             //self::render_search_form();
         }
 
-        $clients    = self::query_clients_for_gallery();
-        $items_html = self::render_client_cards_html($clients);
+        $page = isset($_GET['kcfh_page']) ? max(1, (int) $_GET['kcfh_page']) : 1;
+        $per_page = 10;
+
+        $data = self::query_clients_for_gallery('', $page, $per_page);
+        $items_html = self::render_client_cards_html($data['items']);
+        $pager_html = self::render_client_pagination($data['current_page'], $data['max_pages']);
+
+        //$clients    = self::query_clients_for_gallery();
+        //$items_html = self::render_client_cards_html($clients);
 
         ?>
         <div class="kcfh-gallery"
              id="kcfhGallery"
              data-page-url="<?php echo esc_url(Gallery_Utils::current_page_url()); ?>">
             <?php echo $items_html; ?>
+            <?php echo $pager_html; ?>
         </div>
         <?php
 
@@ -65,8 +73,46 @@ class Gallery_Grid
      * @param string $search
      * @return array[]
      */
-    public static function query_clients_for_gallery(string $search = ''): array
+    public static function query_clients_for_gallery(string $search = '', int $page = 1, int $per_page = 10): array
     {
+        $page = max(1, $page);
+        $per_page = max(1, $per_page);
+
+        $q = new \WP_Query([
+            'post_type' => 'kcfh_client',
+            'post_status' => 'publish',
+            'posts_per_page' => $per_page,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            's' => $search ?:'',
+            'paged' => $page,
+            'fields' => 'ids',
+            'no_found_rows' => false,
+            'meta_query' => [
+                'relation' => 'AND',
+                [
+                    'key'=>'_kcfh_playback_id',
+                    'compare'=>'EXISTS',
+                ],
+                [
+                    'key'=>'_kcfh_playback_id',
+                    'value'=>'',
+                    'compare'=>'!=',
+                ],
+            ],
+        ]);
+
+        $ids = $q->posts;
+
+        if(!$ids){
+            return[
+                'items' => [],
+                'current_page' => $page,
+                'max_pages' => 0,
+            ];
+        }
+
+        /*
         $args = [
             'post_type'      => 'kcfh_client',
             'post_status'    => 'publish',
@@ -81,6 +127,9 @@ class Gallery_Grid
         if (!$ids) {
             return [];
         }
+            */
+
+
 
         $results = [];
         foreach ($ids as $id) {
@@ -96,7 +145,11 @@ class Gallery_Grid
             }
         }
 
-        return $results;
+        return [
+            'items'        => $results,
+            'current_page' => $page,
+            'max_pages'    => (int) $q->max_num_pages,
+        ];
     }
 
     /**
@@ -159,6 +212,33 @@ class Gallery_Grid
         }
 
         $html .= '</div>';
+
+        return $html;
+    }
+
+    private static function render_client_pagination(int $current, int $max){
+        if($max <= 1){
+            return '';
+        }
+
+        $base_url = Gallery_Utils::current_page_url();
+        $html = '<nav class="kcfh-pagination">';
+
+        //previous
+        if($current > 1){
+            $prev_url = esc_url(add_query_arg('kcfh_page', $current - 1, $base_url));
+            $html .= '<a class="kcfh-page-link kcfh-page-prev" href="' . $prev_url . '">&laquo; Previous</a>';
+        }
+
+        //status
+        $html .= '<span class="kcfh-page-status">Page ' . esc_html($current) . ' of ' . esc_html($max) . '</span>';
+
+        // Next
+        if($current < $max){
+            $next_url = esc_url(add_query_arg('kcfh_page',$current + 1, $base_url));
+            $html .= '<a class="kcfh-page-link kcfh-page-next" href="' . $next_url . '">Next &raquo;</a>';
+        }
+        $html .= '</nav>';
 
         return $html;
     }

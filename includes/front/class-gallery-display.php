@@ -50,6 +50,7 @@ class Gallery_Display
             [],
             '1.0.0'
         );
+
     }
 
     /**
@@ -117,8 +118,8 @@ class Gallery_Display
             ? sanitize_text_field(wp_unslash($_POST['q']))
             : '';
 
-        $clients = Gallery_Grid::query_clients_for_gallery($q);
-        $html    = Gallery_Grid::render_client_cards_html($clients);
+        $data = Gallery_Grid::query_clients_for_gallery($q, 1, 10);
+        $html    = Gallery_Grid::render_client_cards_html($data['items']);
 
         wp_send_json_success(['html' => $html]);
     }
