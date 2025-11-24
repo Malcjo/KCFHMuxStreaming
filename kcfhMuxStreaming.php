@@ -45,9 +45,9 @@ require_once KCFH_STREAMING_DIR . 'includes/class-utility-debug.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-live-service.php'; //editing the live stream asset
 
 require_once KCFH_STREAMING_DIR. '/includes/class-live-scheduler.php';
+
+
 require_once KCFH_STREAMING_DIR. 'includes/admin/class-all-clients.php';
-
-
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-constants.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-notices.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-menu.php';
@@ -64,6 +64,7 @@ require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-utils.php';
 require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-grid.php';
 require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-single.php';
 require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-display.php';
+require_once KCFH_STREAMING_DIR . 'includes/front/class-search-bar.php';
 
 
 

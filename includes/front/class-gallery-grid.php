@@ -1,6 +1,8 @@
 <?php
 namespace KCFH\STREAMING;
 
+use KCFH\Streaming\Front\Search_bar;
+
 if (!defined('ABSPATH')) { exit; }
 
 /**
@@ -19,7 +21,8 @@ class Gallery_Grid
         ob_start();
 
         if ($show_search) {
-            self::render_search_form();
+            echo Search_Bar::render();
+            //self::render_search_form();
         }
 
         $clients    = self::query_clients_for_gallery();
@@ -39,6 +42,7 @@ class Gallery_Grid
     /**
      * Search form markup.
      */
+    /*
     private static function render_search_form(): void
     {
         ?>
@@ -52,6 +56,7 @@ class Gallery_Grid
         </form>
         <?php
     }
+    */
 
     /**
      * Query clients that have a playback (live or VOD).
@@ -111,7 +116,8 @@ class Gallery_Grid
 
         foreach ($items as $row) {
             $id     = (int) $row['ID'];
-            $name   = esc_html(get_the_title($id));
+            $name   = get_the_title($id); //raw
+            $name_esc = esc_html($name); //for display
             $slug   = esc_attr(get_post_field('post_name', $id));
             $dob    = esc_html(get_post_meta($id, '_kcfh_dob', true));
             $dod    = esc_html(get_post_meta($id, '_kcfh_dod', true));
@@ -129,20 +135,22 @@ class Gallery_Grid
                 );
             }
 
-            $dateLine = trim("{$dob} – {$dod}", " – ");
-            $badge    = $isLive ? '<span class="kcfh-badge-live">LIVE</span>' : '';
+            $dateLine = trim("{$dob} - {$dod}", " - ");
+            $badge = $isLive ? '<span class="kcfh-badge-live">LIVE</span>' : '';
 
-            $html .= '<a class="kcfh-card" href="' . $link . '">';
-            $html .= '  <div class="kcfh-thumb-wrap">';
+            //Data-name added here
+            //.= is a string concatination
+            $html .= '<a class="kcfh-card" href="' . $link . '" data-name="' . esc_attr($name) . '">';
+            $html .= '<div class="kcfh-thumb-wrap">';
             if ($thumb) {
-                $html .= '    <img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="" loading="lazy" />';
+                $html .= '<img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="" loading="lazy" />';
             } else {
-                $html .= '    <div class="kcfh-thumb kcfh-thumb--placeholder"></div>';
+                $html .= '<div class="kcfh-thumb kcfh-thumb--placeholder"></div>';
             }
             $html .= $badge;
-            $html .= '  </div>';
-            $html .= '  <div class="kcfh-card-meta">';
-            $html .= '    <div class="kcfh-name">' . $name . '</div>';
+            $html .= '</div>';
+            $html .= '<div class="kcfh-card-meta">';
+            $html .= '<div class="kcfh-name">' . $name_esc . '</div>';
             if ($dateLine) {
                 $html .= '    <div class="kcfh-dates">' . esc_html($dateLine) . '</div>';
             }

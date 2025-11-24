@@ -43,3 +43,32 @@
 .kcfh-back { display: inline-block; margin-bottom: .75rem; }
 .kcfh-single-title { margin: .25rem 0; }
 .kcfh-single-dates { color: #6b7280; margin-bottom: .75rem; }
+
+/* Wrapper (spacing around whole bar) */
+.kcfh-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+/* Input height / size */
+.kcfh-search input[type="search"] {
+  flex: 1;
+  padding: 8px 10px;      /* ↑ change this to make it taller/shorter */
+  font-size: 14px;        /* smaller text = visually smaller field */
+  line-height: 1.2;       
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* Button height / size */
+.kcfh-search button {
+  padding: 8px 12px;      /* match input vertical padding for same height */
+  font-size: 14px;
+  line-height: 1.2;
+  border-radius: 4px;
+  white-space: nowrap;    /* keep text on one line */
+  box-sizing: border-box;
+}
+

@@ -24,7 +24,7 @@ final class Vod_Manager {
 
 
 
-        echo '<div class="wrap"><h1>VOD Manager</h1>';
+        echo '<div class="wrap"><h1>Video On Demand (VOD) Manager</h1>';
 
         echo '<style>
         .kcfh-mp4-preparing {
