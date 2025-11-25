@@ -48,25 +48,6 @@ class Gallery_Grid
     }
 
     /**
-     * Search form markup.
-     */
-    /*
-    private static function render_search_form(): void
-    {
-        ?>
-        <form class="kcfh-search" id="kcfhSearchForm">
-            <input type="text"
-                   id="kcfhSearchInput"
-                   name="q"
-                   placeholder="Search by name…" />
-            <button type="submit">Search</button>
-            <button type="button" id="kcfhSearchClear">Clear</button>
-        </form>
-        <?php
-    }
-    */
-
-    /**
      * Query clients that have a playback (live or VOD).
      * If $search provided, search by post_title LIKE $search.
      *

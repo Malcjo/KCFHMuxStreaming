@@ -18,19 +18,19 @@ class CPT_Client {
 
   public static function register() {
     register_post_type(self::POST_TYPE, [
-      'label' => 'Clients',
+      'label' => 'Clients',//general label name for admin
       'labels' => [
-        'name' => 'Clients',
-        'singular_name' => 'Client',
-        'add_new_item' => 'Add New Client',
-        'edit_item' => 'Edit Client',
+        'name' => 'Clients', //name for post type
+        'singular_name' => 'Client',//name for one object
+        'add_new_item' => 'Add New Client', //label for adding new singular item
+        'edit_item' => 'Edit Client', // labe lfor editing a singular item
       ],
-      'public' => false,
-      'show_ui' => true,
-      'show_in_menu' => false, // we’ll put it under our own menu
-      'supports' => ['title', 'thumbnail'],
-      'capability_type' => 'post',
-      'map_meta_cap' => true,
+      'public' => false, //post type not publically querable
+      'show_ui' => true, //want admin to be able to interact
+      'show_in_menu' => false, // hide from left side, Admin_UI class will manage UI
+      'supports' => ['title', 'thumbnail'], //tells Wordpress that editor support - 'post title' and 'featured image'
+      'capability_type' => 'post', // allow built in post capabilities ie edit and delete
+      'map_meta_cap' => true, // high-level  capabilities for different roles, can customise for different roles
     ]);
   }
 

@@ -8,16 +8,23 @@
  */
 
 if (!defined('ABSPATH')) exit;
+//Security measure, if someone accesses site not through WP it won't work
+
 
 
 define('KCFH_STREAMING_VERSION', '0.1.0');
+
 //__FILE__ provides the full path and filename of the current file where this is being used
 define('KCFH_STREAMING_FILE', __FILE__);
+
 //plugin_dir_path receives the full filesystem path to the directory
 define('KCFH_STREAMING_DIR', plugin_dir_path(__FILE__));
+
 //plugin_dir_url is used to retrieve the URL of the directory
 define('KCFH_STREAMING_URL', plugin_dir_url(__FILE__));
-define('KCFH_STREAMING_CACHE_PREFIX', 'kcfh_streaming_'); // used for transients
+
+ // used for transients cached in database
+define('KCFH_STREAMING_CACHE_PREFIX', 'kcfh_streaming_');
 
 define('KCFH_DEBUGMODE', false);
 
@@ -27,6 +34,11 @@ if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
 }
 
 // Autoload (simple): require needed classes.
+//require once only needs to be called once
+// will throw a fatal error if cannot find
+
+//Dot operator '.' concatonates the left and right string together
+//this is used here as the standard .= can only be used with variables
 require_once KCFH_STREAMING_DIR . 'includes/class-admin.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-cpt-client.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-asset-service.php';
@@ -67,11 +79,14 @@ require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-display.php';
 require_once KCFH_STREAMING_DIR . 'includes/front/class-search-bar.php';
 
 
+//add acton is a hook when WP reaches a certain point of the page being loaded it calls the hooks 
 
 //Hook the scheduler on init so cron hooks & the 5-min tick are registered.
+
+//init: fires after WP has finished loading but before headers are sent
 add_action('init', ['KCFH\Streaming\Live_Scheduler', 'bootstrap']);
 
-
+//plugin_loaded: Fires once a single activated plugin is loaded
 add_action('plugins_loaded', function () {
     // Init services
     \KCFH\Streaming\CPT_Client::init();
@@ -86,7 +101,7 @@ add_action('plugins_loaded', function () {
     \KCFH\STREAMING\Gallery_Display::bootstrap();
   
 });
-
+//custom hook
 add_action('utilities_loaded', function(){
   //
   \KCFH\Streaming\Admin_Util::init();
@@ -95,20 +110,37 @@ add_action('utilities_loaded', function(){
 });
 
 
-
+//admin menu: fires before the admin menu loads
 add_action('admin_menu', function () {
   
   
 
   //\KCFH\Streaming\Admin_UI::register_menus();
 });
+//wp_loaded fires once WP, all plugins and theme are fully loaded and instantiated
 
 
+//HEADERS
+//refers to the initial lines of meta data that a web server sends to a clients browser
+//before the actual content of the webpage
+//part of the HTTP communication, act as instrucitons and information for the browser
+//can pass additional information
 
 
 //add_action('admin_post_kcfh_assign_vod', ['KCFH\Streaming\Admin_Util', 'handle_assign_vod']);
 //add_action('admin_post_kcfh_assign_vod', ['\\KCFH\\Streaming\\Admin_UI', 'handle_assign_vod']);
 
+//add filter
+//filters takes a value, modifies and returns it
+
+//wp_resource_hints
+//uses to build <link rel='preconnect' tags to the <head>
+//asks what should output
+//if $relation == 'preconnect'
+//push external urls
+//allows to load and push domains to load slightly faster
+
+//currently loads on every page, could eventually oad on only the needed pages
 add_filter('wp_resource_hints', function($hints, $relation){
   if ($relation === 'preconnect') {
     $hints[] = 'https://image.mux.com';
