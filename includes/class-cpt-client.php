@@ -9,13 +9,24 @@ class CPT_Client {
   const META_START_AT = '_kcfh_live_start_at'; // UTC timestamp
   const META_END_AT   = '_kcfh_live_end_at';   // UTC timestamp
 
-  public static function init() {
+  //why static
+  //don't need to create an object
+  //the main root plugin file can just call init();
+  //wires the class into wordpress using hooks
+
+  public static function init() { 
     add_action('init', [__CLASS__, 'register']);
     add_action('add_meta_boxes', [__CLASS__, 'meta_boxes']);
     add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'save_meta']);
 
   }
 
+  //Registering the post type
+  //'kcfh_client
+  //post type is added within the metaboxes
+
+  //Post type registrations should not be hooked before the init action.
+  //any taxonomy connections should be registered via the $taxonomies argument
   public static function register() {
     register_post_type(self::POST_TYPE, [
       'label' => 'Clients',//general label name for admin
@@ -39,12 +50,12 @@ class CPT_Client {
   public static function meta_boxes() {
     //Main details box
     add_meta_box(
-      'kcfh_client_details', 
-      'Client Details', 
-      [__CLASS__, 'render_meta'],
-      self::POST_TYPE, 
-      'normal', 
-      'high');
+      'kcfh_client_details', //Id
+      'Client Details',  //title
+      [__CLASS__, 'render_meta'], //callback: function that fills the box with desired content
+      self::POST_TYPE, //screen: 'kcfh_client' - screen/s on which to show the box(Such as post type). Accepts a single screen ID 
+      'normal', //context: position - normal, side, advanced
+      'high'); //priority: high, core, default, low
 
       add_meta_box(
       'kcfh_schedule_debug',
