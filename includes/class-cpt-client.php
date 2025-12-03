@@ -8,25 +8,25 @@ class CPT_Client {
   const POST_TYPE = 'kcfh_client';
   const META_START_AT = '_kcfh_live_start_at'; // UTC timestamp
   const META_END_AT   = '_kcfh_live_end_at';   // UTC timestamp
+  const KCFH_ASSET_ID = '_kcfh_asset_id';
 
-  //why static
-  //don't need to create an object
-  //the main root plugin file can just call init();
-  //wires the class into wordpress using hooks
-
-  public static function init() { 
+  public static function init() {
     add_action('init', [__CLASS__, 'register']);
     add_action('add_meta_boxes', [__CLASS__, 'meta_boxes']);
     add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'save_meta']);
 
   }
 
-  //Registering the post type
-  //'kcfh_client
-  //post type is added within the metaboxes
+  // There are many different types of content in WordPress. 
+  // These content types are normally described as Post Types
 
-  //Post type registrations should not be hooked before the init action.
-  //any taxonomy connections should be registered via the $taxonomies argument
+  // Post types can support any number of built-in core features such as 
+  // meta boxes, 
+  // custom fields, 
+  // post thumbnails, 
+  // post statuses, 
+  // comments, 
+  // and more.
   public static function register() {
     register_post_type(self::POST_TYPE, [
       'label' => 'Clients',//general label name for admin
@@ -46,38 +46,21 @@ class CPT_Client {
   }
 
 
-
+#region Set up MetaBoxes
   public static function meta_boxes() {
     //Main details box
     add_meta_box(
-      'kcfh_client_details', //Id
-      'Client Details',  //title
-      [__CLASS__, 'render_meta'], //callback: function that fills the box with desired content
-      self::POST_TYPE, //screen: 'kcfh_client' - screen/s on which to show the box(Such as post type). Accepts a single screen ID 
-      'normal', //context: position - normal, side, advanced
-      'high'); //priority: high, core, default, low
+      'kcfh_client_details', 
+      'Client Details', 
+      [__CLASS__, 'render_meta'],
+      self::POST_TYPE, 
+      'normal', 
+      'high');
 
       add_meta_box(
       'kcfh_schedule_debug',
       'Schedule Debug',
-      function($post){
-        $startUtc = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_START_AT, true);
-        $endUtc   = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_END_AT, true);
-
-        $nextStart = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$post->ID]);
-        $nextEnd   = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$post->ID]);
-
-        echo '<p><strong>Stored UTC</strong><br>';
-        echo 'Start: '.($startUtc ? date_i18n('Y-m-d H:i:s', $startUtc) : '—').' UTC<br>';
-        echo 'End: '.($endUtc ? date_i18n('Y-m-d H:i:s', $endUtc) : '—').' UTC</p>';
-
-        echo '<p><strong>Next scheduled</strong><br>';
-        echo 'Start: '.($nextStart ? date_i18n('Y-m-d H:i:s', $nextStart) : '—').' (site time)<br>';
-        echo 'End: '.($nextEnd ? date_i18n('Y-m-d H:i:s', $nextEnd) : '—').' (site time)</p>';
-
-        $live = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
-        echo '<p><strong>Current Live Client:</strong> '.($live ?: 'none').' </p>';
-      },
+      [__CLASS__, 'SetUpScheduleDebuger'],
       self::POST_TYPE,
       'side',
       'low'
@@ -85,9 +68,33 @@ class CPT_Client {
 
   }
 
+  public static function SetUpScheduleDebuger($post){
+    $startUtc = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_START_AT, true);
+    $endUtc   = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_END_AT, true);
+    
+    $nextStart = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$post->ID]);
+    $nextEnd   = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$post->ID]);
+
+    echo '<p><strong>Stored UTC</strong><br>';
+    echo 'Start: '.($startUtc ? date_i18n('Y-m-d H:i:s', $startUtc) : '—').' UTC<br>';
+    echo 'End: '.($endUtc ? date_i18n('Y-m-d H:i:s', $endUtc) : '—').' UTC</p>';
+
+    echo '<p><strong>Next scheduled</strong><br>';
+    echo 'Start: '.($nextStart ? date_i18n('Y-m-d H:i:s', $nextStart) : '—').' (site time)<br>';
+    echo 'End: '.($nextEnd ? date_i18n('Y-m-d H:i:s', $nextEnd) : '—').' (site time)</p>';
+
+    $live = (int) get_option(\KCFH\Streaming\Admin_UI::OPT_LIVE_CLIENT, 0);
+    echo '<p><strong>Current Live Client:</strong> '.($live ?: 'none').' </p>';
+  }
+
   public static function render_meta($post) {
+    //creates the nonce
+    //kcfh_client_save - the action
+    //kcfh_client_nonce - the field name
     wp_nonce_field('kcfh_client_save', 'kcfh_client_nonce');
-    $asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
+    //$asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
+
+
     ?>
     <style>
       .kcfh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:800px}
@@ -98,82 +105,104 @@ class CPT_Client {
       <?php 
         self::render_client_details($post);
         self::render_stream_timeframe_metabox($post); 
+        self::render_asset_metabox($post);
       ?>
-  </br>
-<?php
-  // Current selection
-  $current_asset_id = get_post_meta($post->ID, '_kcfh_asset_id', true);
-
-  // Pull recent ready assets from Mux (for labels)
-  $result = \KCFH\Streaming\Asset_Service::fetch_assets([
-    'limit'     => 100,
-    'order'     => 'created_at',
-    'direction' => 'desc',
-    'status'    => 'ready',
-  ], 60);
-
-  $assets = (!is_wp_error($result) && !empty($result['assets'])) ? $result['assets'] : [];
-
-  // Map of asset_id => client_id for already-assigned assets
-  $assigned_ids = [];
-  $assigned_posts = get_posts([
-    'post_type'      => self::POST_TYPE,
-    'posts_per_page' => -1,
-    'fields'         => 'ids',
-    'no_found_rows'  => true,
-    'meta_query'     => [[ 'key' => '_kcfh_asset_id', 'compare' => 'EXISTS' ]],
-  ]);
-  foreach ($assigned_posts as $cid) {
-    $aid = get_post_meta($cid, '_kcfh_asset_id', true);
-    if ($aid) $assigned_ids[$aid] = (int)$cid;
+      </br>
+      <?php
   }
-    $playback   = get_post_meta($post->ID, '_kcfh_playback_id', true);
-    $vod_title  = get_post_meta($post->ID, '_kcfh_vod_title', true);
-    $ext_id     = get_post_meta($post->ID, '_kcfh_external_id', true);
-?>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>
-<mux-player 
-  id="kcfhPlayer"
-  stream-type="on-demand"
-  playback-id="<?php echo($playback); ?>"
-  style="width:100%;max-width:1080px;height:auto;"
-  thumbnail-time="2"
-  playsinline
-  crossorigin
-  default-hidden-captions
-></mux-player>   
-<div>
-  <label for="kcfh_asset_id">Primary VOD Asset</label><br>
-  <select id="kcfh_asset_id" name="kcfh_asset_id" class="widefat">
-    <option value="">— Unassigned —</option>
-    <?php if (empty($assets)): ?>
-      <!-- No assets (or no creds). Keep just the Unassigned option. -->
-    <?php else: ?>
-      <?php foreach ($assets as $a):
-        $aid   = esc_attr($a['id']);
-        $title = !empty($a['title']) ? $a['title']
-                : (!empty($a['passthrough']) ? $a['passthrough'] : ('Asset ' . $a['id']));
-        $label = esc_html($title);
-        $selected = selected($current_asset_id, $a['id'], false);
-        $assigned_elsewhere = isset($assigned_ids[$a['id']]) && ($assigned_ids[$a['id']] !== (int)$post->ID);
-        if ($assigned_elsewhere) continue; // hide assets already tied to other clients
+#endregion 
+
+
+
+
+
+
+
+
+
+
+#region render client info functions
+public static function render_asset_metabox($post){
+        // Current selection
+        // if meta exists will get the asset ID
+        // ID comes from 'Save Meta'function
+        $current_asset_id = get_post_meta(
+          $post->ID, //Current post's ID, get ID from the Post object
+          self::KCFH_ASSET_ID, //The Meta key we use to store the chosen Mux Asset ID for the client
+          true // return a single value instead of an array
+        );
+
+        // Pull recent ready assets from Mux (for labels)
+        $result = \KCFH\Streaming\Asset_Service::fetch_assets([
+          'limit'     => 100,
+          'order'     => 'created_at',
+          'direction' => 'desc',
+          'status'    => 'ready',
+        ], 60);
+
+        $assets = (!is_wp_error($result) && !empty($result['assets'])) ? $result['assets'] : [];
+
+        // Map of asset_id => client_id for already-assigned assets
+        $assigned_ids = self::GetPostsWithAssetIDS();
+
+        $playback   = get_post_meta($post->ID, '_kcfh_playback_id', true);
+        $vod_title  = get_post_meta($post->ID, '_kcfh_vod_title', true);
+        $ext_id     = get_post_meta($post->ID, '_kcfh_external_id', true);
       ?>
-        <option value="<?= $aid ?>" <?= $selected ?>><?= $label ?></option>
-      <?php endforeach; ?>
-    <?php endif; ?>
-  </select>
-  <br><small>Select a Mux asset by name; we’ll save the Asset ID and pull playback/meta automatically.</small>
+
+      <hr>
+
+      <!-- Load the Mux player webcomponent as an ES module from jsDelivr -->
+      <!-- An ES Module (ECMAScript Module) is a standardized way to organize and share JavaScript code -->
+      <!-- ECMA stands for European Computer Manufacturers Association.  -->
+      <script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>
+      <mux-player 
+        id="kcfhPlayer"
+        stream-type="on-demand"
+        playback-id="<?php echo($playback); ?>"
+        style="width:100%;max-width:1080px;height:auto;"
+        thumbnail-time="2"
+        playsinline
+        crossorigin
+        default-hidden-captions
+      ></mux-player>
+         
+      <div>
+        <label for="kcfh_asset_id">Primary VOD Asset</label><br>
+        <select id="kcfh_asset_id" name="kcfh_asset_id" class="widefat">
+          <option value="">— Unassigned —</option>
+          <?php 
+          if (empty($assets)): 
+            ?>
+            <option value="">— No options found —</option>
+            <?php
+            // No assets (or no creds). Keep just the Unassigned option. 
+          else: 
+            foreach ($assets as $a):
+              $aid   = isset($a['id']) ? $a['id'] : '';
+              $title = !empty($a['title']) ? $a['title']
+                      : (!empty($a['passthrough']) ? $a['passthrough'] : (' No Title! - Asset ID: ' . substr($a['id'], 0, 8)  . '...'));
+              $label = esc_html($title);
+              $selected = selected( // returns selected='value'
+                $current_asset_id, //compare this
+                $a['id'], //with this, if false returns empty string
+                false); // if true or blank, wordpress will echo, if false, will leave as variable for me to echo
+              $assigned_elsewhere = isset($assigned_ids[$a['id']]) && ($assigned_ids[$a['id']] !== (int)$post->ID);
+              if ($assigned_elsewhere) continue; // hide assets already tied to other clients
+            ?>
+          <option value="<?php echo esc_attr($aid); ?>" <?php echo $selected; ?>><?php echo $label; ?></option>
+          <?php 
+            endforeach; 
+          endif; 
+          ?>
+        </select>
+        <br><small>Select a Mux asset by name; we'll save the Asset ID and pull playback/meta automatically.</small>
       </div>
-      
     </div>
 
-    <p><small>Use the Featured Image box for the profile photo.</small></p>
-    <?php
-
-
-
-    ?>
-    <hr>
+        <!-- will deal with profile pictures later -->
+    <!--<p><small>Use the Featured Image box for the profile photo.</small></p> -->
+    
     <h3>Assigned VOD2</h3>
     <p>
       <label>
@@ -196,12 +225,10 @@ class CPT_Client {
     <?php
 
     if ($playback) {
-        $thumb = esc_url(add_query_arg(['width'=>480,'height'=>270,'time'=>2,'fit_mode'=>'smartcrop'], "https://image.mux.com/$playback/thumbnail.jpg"));
-        echo '<p><img src="'.$thumb.'" width="240" height="135" style="border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)"></p>';
+      $thumb = esc_url(add_query_arg(['width'=>480,'height'=>270,'time'=>2,'fit_mode'=>'smartcrop'], "https://image.mux.com/$playback/thumbnail.jpg"));
+      echo '<p><img src="'.$thumb.'" width="240" height="135" style="border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)"></p>';
     }
-
-  }
-
+}
 
   public static function render_stream_timeframe_metabox($post) {
     wp_nonce_field('kcfh_stream_window', 'kcfh_stream_window_nonce');
@@ -228,8 +255,21 @@ class CPT_Client {
   public static function render_client_details($post){
     $dob  = get_post_meta($post->ID, '_kcfh_dob', true);
     $dod  = get_post_meta($post->ID, '_kcfh_dod', true);
+    $show_gallery = get_post_meta($post->ID, '_kcfh_show_in_gallery', true);
+    
 
+    // For existing posts with no meta yet, treat as "true" in the UI
+    $show_checked = ($show_gallery === '' || $show_gallery === '1');
     ?>
+      <p>
+        <label>
+          <input type="checkbox"
+                 name="kcfh_show_in_gallery"
+                 value="1"
+                 <?php checked($show_checked, true); ?>>
+          Show this client in public gallery
+        </label>
+      </p>
       <p>
         <label for="kcfh_dob">Date of Birth</label><br>
         <input type="date" id="kcfh_dob" name="kcfh_dob" value="<?= esc_attr($dob); ?>">
@@ -239,10 +279,20 @@ class CPT_Client {
         <label for="kcfh_dod">Date of Death</label><br>
         <input type="date" id="kcfh_dod" name="kcfh_dod" value="<?= esc_attr($dod); ?>">
       </p>
-
     <?php
   }
 
+#endregion 
+
+
+
+
+
+
+
+
+
+#region Save Meta Function
   public static function save_meta($post_id) {
     if (!isset($_POST['kcfh_client_nonce']) || !wp_verify_nonce($_POST['kcfh_client_nonce'], 'kcfh_client_save')) return;
     if (!current_user_can('edit_post', $post_id)) return;
@@ -253,14 +303,18 @@ class CPT_Client {
     update_post_meta($post_id, '_kcfh_dob', $dob);
     update_post_meta($post_id, '_kcfh_dod', $dod);
 
+    //update show in gellery checkbox
+    $show_gallery = isset($_POST['kcfh_show_in_gallery']) ? '1' : '0';
+    update_post_meta($post_id, '_kcfh_show_in_gallery', $show_gallery);
+
     // VOD dropdown selection
     $new_asset_id = isset($_POST['kcfh_asset_id']) ? sanitize_text_field($_POST['kcfh_asset_id']) : '';
-    $old_asset_id = get_post_meta($post_id, '_kcfh_asset_id', true);
+    $old_asset_id = get_post_meta($post_id, self::KCFH_ASSET_ID, true);
 
   if ($new_asset_id === '') {
 
       // Unassign
-      delete_post_meta($post_id, '_kcfh_asset_id');
+      delete_post_meta($post_id, self::KCFH_ASSET_ID);
       delete_post_meta($post_id, '_kcfh_playback_id');
       delete_post_meta($post_id, '_kcfh_vod_title');
       delete_post_meta($post_id, '_kcfh_external_id');
@@ -272,10 +326,10 @@ class CPT_Client {
         'fields'         => 'ids',
         'no_found_rows'  => true,
         'post__not_in'   => [$post_id],
-        'meta_query'     => [[ 'key' => '_kcfh_asset_id', 'value' => $new_asset_id, 'compare' => '=' ]],
+        'meta_query'     => [[ 'key' => self::KCFH_ASSET_ID, 'value' => $new_asset_id, 'compare' => '=' ]],
       ]);
       foreach ($others as $oid) {
-        delete_post_meta($oid, '_kcfh_asset_id');
+        delete_post_meta($oid, self::KCFH_ASSET_ID);
         delete_post_meta($oid, '_kcfh_playback_id');
         delete_post_meta($oid, '_kcfh_vod_title');
         delete_post_meta($oid, '_kcfh_external_id');
@@ -289,13 +343,13 @@ class CPT_Client {
                   : (!empty($asset['passthrough']) ? $asset['passthrough'] : '');
         $ext_id   = !empty($asset['external_id']) ? $asset['external_id'] : '';
 
-        update_post_meta($post_id, '_kcfh_asset_id',     $new_asset_id);
+        update_post_meta($post_id, self::KCFH_ASSET_ID,     $new_asset_id);
         if ($playback) update_post_meta($post_id, '_kcfh_playback_id', $playback);
         update_post_meta($post_id, '_kcfh_vod_title',   sanitize_text_field($title));
         update_post_meta($post_id, '_kcfh_external_id', sanitize_text_field($ext_id));
       } else {
         // Save at least the chosen ID; you can refresh meta later
-        update_post_meta($post_id, '_kcfh_asset_id', $new_asset_id);
+        update_post_meta($post_id, self::KCFH_ASSET_ID, $new_asset_id);
       }
     }
 
@@ -349,7 +403,7 @@ class CPT_Client {
 
 
   }
-
+  #endregion
 
 
   private static function utc_to_local_input_value($utcTs) {
@@ -376,6 +430,29 @@ class CPT_Client {
         return 0;
     }
 }
+
+        private static function GetPostsWithAssetIDS(): array{
+          $assigned_ids = [];
+          $assigned_posts = get_posts([
+            'post_type'      => self::POST_TYPE, // post tyle slug
+            'posts_per_page' => -1, // number of posts to query -1 for all
+            'fields'         => 'ids', // post fields to query - Id returns an array of post ID's int[]
+            'no_found_rows'  => true, // whether to skip counting the total rows found, enabling can improve performance
+            'meta_query'     => [ 
+              // an associative array of meta query arguments
+              //only return posts that have the _kcfh_asset_id meta key
+              [ 'key' => self::KCFH_ASSET_ID, //key - custom field key //------------------ !!!!!!!!!!!!!!!!!! hard coded check, can't scale easily!!!!!!!!!!!!!!!!
+              'compare' => 'EXISTS' ]],  // compare - Operattor to test
+          ]);
+
+
+          foreach ($assigned_posts as $cid) { // loops through each client
+            $aid = get_post_meta($cid, self::KCFH_ASSET_ID, true);
+            //if there is an asset id add it to the array
+            if ($aid) $assigned_ids[$aid] = (int)$cid;
+          }
+          return $assigned_posts;
+        }
 
 }
 

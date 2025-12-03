@@ -134,6 +134,8 @@ final class All_Clients_Page {
             <th style="width:150px;">DOD</th>
             <th style="width:220px;">VOD (Playback)</th>
             <th style="width:110px;">Live</th>
+            <th style="width:110px;">Start time</th>
+            <th style="width:110px;">End time</th>
             <th style="width:240px;">Actions</th>
           </tr>
         </thead>
@@ -146,6 +148,9 @@ final class All_Clients_Page {
             $dod  = get_post_meta($p->ID, '_kcfh_dod', true);
             $play = get_post_meta($p->ID, '_kcfh_playback_id', true);
             $is_live = ((int)$p->ID === $live_label_id);
+
+            $startTimeStream= (int) get_post_meta($p->ID, \KCFH\Streaming\CPT_Client::META_START_AT, true);
+            $endTimeStream = (int) get_post_meta($p->ID, \KCFH\Streaming\CPT_Client::META_END_AT, true);
 
             $edit_link  = get_edit_post_link($p->ID, '');
             $view_link  = admin_url('admin.php?page='.esc_attr(self::SLUG).'&view='.$p->ID); // or front-end link if desired
@@ -160,6 +165,8 @@ final class All_Clients_Page {
               <td><?php echo esc_html($dod ?: '—'); ?></td>
               <td><?php echo $play ? '<code style="font-size:12px">'.esc_html($play).'</code>' : '—'; ?></td>
               <td><?php echo $is_live ? '<span class="kcfh-badge kcfh-badge--live">Live Now</span>' : '—'; ?></td>
+              <td><?php echo esc_html($startTimeStream ?date_i18n('Y-m-d H:i:s', $startTimeStream): '—'); ?></td>
+              <td><?php echo esc_html($endTimeStream ?date_i18n('Y-m-d H:i:s', $endTimeStream): '—'); ?></td>
               <td class="kcfh-actions">
                 <a href="<?php echo esc_url($edit_link); ?>">Edit</a>
                 <?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?>

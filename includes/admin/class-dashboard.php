@@ -34,6 +34,8 @@ final class Dashboard {
               <th>DOB</th>
               <th>DOD</th>
               <th>Live</th>
+              <th style="width:110px;">Start time</th>
+              <th style="width:110px;">End time</th>
               <th>Actions</th>
               <th>Set/Unset Live</th>
               <th>Download Video</th>
@@ -41,22 +43,30 @@ final class Dashboard {
             </thead>
             <tbody>
             <?php foreach ($clients as $p): 
+                $id = $p->ID;
+                $title = get_the_title($p);
+                $dateCreatedOn =get_the_date('', $p);
                 $dob = get_post_meta($p->ID, '_kcfh_dob', true);
                 $dod = get_post_meta($p->ID, '_kcfh_dod', true);
                 $is_live = ($p->ID === $live_id);
                 $live_badge = $is_live ? '<span style="color:#0a0;font-weight:600;">Live Now</span>' : '—';
+
+                $startTimeStream= (int) get_post_meta($p->ID, \KCFH\Streaming\CPT_Client::META_START_AT, true);
+                $endTimeStream = (int) get_post_meta($p->ID, \KCFH\Streaming\CPT_Client::META_END_AT, true);
                 $edit_link = get_edit_post_link($p->ID, '');
                 $nonce = wp_create_nonce('kcfh_set_live_' . $p->ID);
                 $set_url = admin_url('admin-post.php?action=kcfh_set_live&client_id=' . $p->ID . '&_wpnonce=' . $nonce);
                 $unset_url  = admin_url('admin-post.php?action=kcfh_set_live&client_id=0&_wpnonce=' . wp_create_nonce('kcfh_set_live_0'));
             ?>
               <tr>
-                <td><?php echo esc_html($p->ID); ?></td>
-                <td><?php echo esc_html(get_the_title($p)); ?></td>
-                <td><?php echo esc_html(get_the_date('', $p)); ?></td>
+                <td><?php echo esc_html($id); ?></td>
+                <td><b><a href="<?php echo esc_url($edit_link); ?>"><?php echo esc_html($title) ?></a></b></td>
+                <td><?php echo esc_html($dateCreatedOn); ?></td>
                 <td><?php echo esc_html($dob); ?></td>
                 <td><?php echo esc_html($dod); ?></td>
                 <td><?php echo $live_badge; ?></td>
+                <td><?php echo esc_html($startTimeStream ?date_i18n('Y-m-d H:i:s', $startTimeStream): '—'); ?></td>
+                <td><?php echo esc_html($endTimeStream ?date_i18n('Y-m-d H:i:s', $endTimeStream): '—'); ?></td>
                 <td><b><a href="<?php echo esc_url($edit_link); ?>">Edit</a></b></td>
                 <td><?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?></td>
                 <td><?php Admin_Util::DownloadVODForClient($p); ?></td>

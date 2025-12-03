@@ -8,12 +8,15 @@
   }
 
   function doSearch(q){
+    var pageURL = $('#kcfhGallery').data('page-url') || window.location.href;
+
     $.post(cfg.ajaxUrl, {
       action: 'kcfh_gallery_search',
       nonce: cfg.nonce,
       q: q || '',
       columns: cfg.columns,
-      includeEmpty: cfg.includeEmpty ? 1 : 0
+      includeEmpty: cfg.includeEmpty ? 1 : 0,
+      pageURL: pageURL
     }).done(function(resp){
       if (resp && resp.success && resp.data && resp.data.html){
         renderGridHtml(resp.data.html);

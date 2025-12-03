@@ -103,6 +103,7 @@ class Gallery_Display
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'action'  => self::AJAX_ACTION,
                 'nonce'   => $nonce,
+                'queryParam' => 'kcfh_client',
             ]
         );
     }
@@ -114,13 +115,21 @@ class Gallery_Display
     {
         check_ajax_referer(self::NONCE_ACTION, 'nonce');
 
-        $q = isset($_POST['q'])
+        $query = isset($_POST['q'])
             ? sanitize_text_field(wp_unslash($_POST['q']))
             : '';
+        $columns = isset($_POST['columns'])
+            ? max(1, (int) $_POST['columns']) 
+            : 2;
+        $include_empty = isset($_POST['includeEmpty']);
 
-        $data = Gallery_Grid::query_clients_for_gallery($q, 1, 10);
-        $html    = Gallery_Grid::render_client_cards_html($data['items']);
+        $base_url = ! empty($_POST['pageUrl'])
+            ? esc_url_raw(wp_unslash($_POST['pageUrl']) )
+            : Gallery_Utils::current_page_url();
 
-        wp_send_json_success(['html' => $html]);
+        $data = Gallery_Grid::query_clients_for_gallery($query, 1, 10);
+        $html = Gallery_Grid::render_client_cards_html($data['items']);
+
+        wp_send_json_success(array('html' => $html) );
     }
 }

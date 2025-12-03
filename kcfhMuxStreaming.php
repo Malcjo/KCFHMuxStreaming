@@ -151,9 +151,30 @@ add_filter('wp_resource_hints', function($hints, $relation){
 }, 10, 2);
 
 add_action('wp_enqueue_scripts', function () {
+    $handle = 'kcfh-mux-player';
+
+    // Register the script
+    wp_register_script(
+        $handle,
+        'https://cdn.jsdelivr.net/npm/@mux/mux-player', // you can pin a version if you want
+        [],
+        null,   // let CDN handle version (or set '2.7.2' etc.)
+        true    // load in footer
+    );
+
+    // Tell WP this is a module script so the browser defines <mux-player>
+    if (function_exists('wp_script_add_data')) {
+        wp_script_add_data($handle, 'type', 'module');
+    }
+
+    wp_enqueue_script($handle);
+}, 20);
+
+
+/*add_action('wp_enqueue_scripts', function () {
   wp_enqueue_script('mux-player', 'https://cdn.jsdelivr.net/npm/@mux/mux-player', [], null, true);
 });
-
+*/
 
 if (defined('KCFH_DEBUGMODE') && KCFH_DEBUGMODE){
 
