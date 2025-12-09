@@ -224,8 +224,22 @@ public static function render_asset_metabox($post){
     </p>
     <?php
 
+    // thumbnail for the mux playback viewer
+    // paramters are for MUX to generate the thumbnail
+    // https://www.mux.com/docs/guides/get-images-from-a-video
     if ($playback) {
-      $thumb = esc_url(add_query_arg(['width'=>480,'height'=>270,'time'=>2,'fit_mode'=>'smartcrop'], "https://image.mux.com/$playback/thumbnail.jpg"));
+      $thumb = esc_url(
+        add_query_arg(
+          [
+            'width'=>480, // width of the thumbnail (in pixels)
+            'height'=>270, // height of the thumbail (in pixels)
+            'time'=>2, //The time (in seconds) of the video timeline where the image should be pulled
+            'fit_mode'=>'smartcrop' // how to fir a thumbnail within the width, height.
+            //valid values are preserve, stretch, crop, smartcrop and pad
+            //- smart crop: and algorithm will attempt to find an are of interest in the image and center it
+            // requires both witdh and height
+          ], 
+            "https://image.mux.com/$playback/thumbnail.jpg"));
       echo '<p><img src="'.$thumb.'" width="240" height="135" style="border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)"></p>';
     }
 }
@@ -239,6 +253,7 @@ public static function render_asset_metabox($post){
     // Convert stored UTC -> site local string for <input type="datetime-local">
     $startLocal = self::utc_to_local_input_value($startUtc);
     $endLocal   = self::utc_to_local_input_value($endUtc);
+    //_e is a wordpress function that marks the string for translation
     ?>
     <p><label for="kcfh_live_start_local"><strong><?php _e('Stream start (local)', 'kcfh'); ?></strong></label>
     <input type="datetime-local" id="kcfh_live_start_local" name="kcfh_live_start_local" value="<?php echo esc_attr($startLocal); ?>" class="widefat"></p>
