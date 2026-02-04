@@ -38,7 +38,7 @@ final class Dashboard {
               <th style="width:110px;">End time</th>
               <th>Actions</th>
               <th>Set/Unset Live</th>
-              <th>Download Video</th>
+              <!--<th>Download Video</th>-->
             </tr>
             </thead>
             <tbody>
@@ -81,7 +81,7 @@ final class Dashboard {
                 ): '—'); ?></td>
                 <td><b><a href="<?php echo esc_url($edit_link); ?>">Edit</a></b></td>
                 <td><?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?></td>
-                <td><?php Admin_Util::DownloadVODForClient($p); ?></td>
+                <!--<td><?php //Admin_Util::DownloadVODForClient($p); ?></td>-->
               </tr>
             <?php endforeach; ?>
             </tbody>

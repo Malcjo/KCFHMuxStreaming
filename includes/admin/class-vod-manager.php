@@ -56,7 +56,7 @@ final class Vod_Manager {
               <th>External ID</th>
               <th>Preview</th>
               <th>Assign to Client</th>
-              <th>Download</th>
+              <!--<th>Download</th>-->
             </tr>
           </thead>
           <tbody>
@@ -107,7 +107,7 @@ final class Vod_Manager {
             echo '</form>';
             echo '</td>';
 
-            Admin_Util::DownloadVOD($a);
+            //Admin_Util::DownloadVOD($a);
 
             echo '</tr>';
         }
