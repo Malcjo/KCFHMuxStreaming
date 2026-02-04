@@ -65,8 +65,20 @@ final class Dashboard {
                 <td><?php echo esc_html($dob); ?></td>
                 <td><?php echo esc_html($dod); ?></td>
                 <td><?php echo $live_badge; ?></td>
-                <td><?php echo esc_html($startTimeStream ?date_i18n('Y-m-d H:i:s', $startTimeStream): '—'); ?></td>
-                <td><?php echo esc_html($endTimeStream ?date_i18n('Y-m-d H:i:s', $endTimeStream): '—'); ?></td>
+          
+                <td><?php echo esc_html($startTimeStream ? wp_date
+                (
+                  get_option('date_format') . ' ' . get_option('time_format'), 
+                  $startTimeStream, 
+                  wp_timezone()
+                )
+                : '—'); ?></td>
+                <td><?php echo esc_html($endTimeStream ? wp_date
+                (
+                  get_option('date_format') . ' ' . get_option('time_format'), 
+                  $endTimeStream, 
+                  wp_timezone()
+                ): '—'); ?></td>
                 <td><b><a href="<?php echo esc_url($edit_link); ?>">Edit</a></b></td>
                 <td><?php Admin_Util::DisplayIsLive($is_live, $set_url,$unset_url);?></td>
                 <td><?php Admin_Util::DownloadVODForClient($p); ?></td>
