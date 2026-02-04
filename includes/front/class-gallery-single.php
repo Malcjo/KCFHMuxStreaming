@@ -1,6 +1,8 @@
 <?php
 namespace KCFH\STREAMING;
 
+use KCFH\STREAMING\Admin_Util;
+
 if (!defined('ABSPATH')) { exit; }
 
 /**
@@ -51,7 +53,7 @@ class Gallery_Single
 
         ?>
         <div class="kcfh-single">
-            <a class="kcfh-back" href="<?php echo $back_url; ?>">&larr; Back</a>
+            <a class="kcfh-back" href="<?php echo $back_url; ?>" onclick="reloadPage()">&larr; Back</a>
             <h2 class="kcfh-single-title"><?php echo $name; ?></h2>
 
             <?php if ($dob || $dod): ?>
@@ -80,12 +82,21 @@ class Gallery_Single
                 ></mux-player>
             </div>
         </div>
+        <script>
+        function reloadPage(){
+            location.reload();
+            console.log("Page reloaded");
+        }
+        </script>
         <?php
 
         // Inline polling script
         self::render_polling_script($client_id, $end_utc);
 
         return ob_get_clean();
+
+        
+
     }
 
     /**
@@ -110,7 +121,7 @@ class Gallery_Single
                     const p = document.getElementById('kcfhPlayer');
                     if (!p) {
                         console.warn('[KCFH] mux-player not found; reloading page');
-                        location.reload();
+                        location.reload(); //reload the page
                         return;
                     }
                     p.setAttribute('stream-type', 'on-demand');

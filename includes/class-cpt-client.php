@@ -107,6 +107,7 @@ class CPT_Client {
         self::render_stream_timeframe_metabox($post); 
         self::render_asset_metabox($post);
       ?>
+      
       </br>
       <?php
   }
@@ -155,93 +156,15 @@ public static function render_asset_metabox($post){
       <!-- Load the Mux player webcomponent as an ES module from jsDelivr -->
       <!-- An ES Module (ECMAScript Module) is a standardized way to organize and share JavaScript code -->
       <!-- ECMA stands for European Computer Manufacturers Association.  -->
-      <script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>
-      <mux-player 
-        id="kcfhPlayer"
-        stream-type="on-demand"
-        playback-id="<?php echo($playback); ?>"
-        style="width:100%;max-width:1080px;height:auto;"
-        thumbnail-time="2"
-        playsinline
-        crossorigin
-        default-hidden-captions
-      ></mux-player>
-         
-      <div>
-        <label for="kcfh_asset_id">Primary VOD Asset</label><br>
-        <select id="kcfh_asset_id" name="kcfh_asset_id" class="widefat">
-          <option value="">— Unassigned —</option>
-          <?php 
-          if (empty($assets)): 
-            ?>
-            <option value="">— No options found —</option>
-            <?php
-            // No assets (or no creds). Keep just the Unassigned option. 
-          else: 
-            foreach ($assets as $a):
-              $aid   = isset($a['id']) ? $a['id'] : '';
-              $title = !empty($a['title']) ? $a['title']
-                      : (!empty($a['passthrough']) ? $a['passthrough'] : (' No Title! - Asset ID: ' . substr($a['id'], 0, 8)  . '...'));
-              $label = esc_html($title);
-              $selected = selected( // returns selected='value'
-                $current_asset_id, //compare this
-                $a['id'], //with this, if false returns empty string
-                false); // if true or blank, wordpress will echo, if false, will leave as variable for me to echo
-              $assigned_elsewhere = isset($assigned_ids[$a['id']]) && ($assigned_ids[$a['id']] !== (int)$post->ID);
-              if ($assigned_elsewhere) continue; // hide assets already tied to other clients
-            ?>
-          <option value="<?php echo esc_attr($aid); ?>" <?php echo $selected; ?>><?php echo $label; ?></option>
-          <?php 
-            endforeach; 
-          endif; 
-          ?>
-        </select>
-        <br><small>Select a Mux asset by name; we'll save the Asset ID and pull playback/meta automatically.</small>
-      </div>
-    </div>
 
+ 
         <!-- will deal with profile pictures later -->
     <!--<p><small>Use the Featured Image box for the profile photo.</small></p> -->
     
-    <h3>Assigned VOD2</h3>
-    <p>
-      <label>
-        VOD Title<br>
-        <input type="text" value="<?= esc_attr($vod_title); ?>" class="regular-text" disabled>
-      </label>
-    </p>
-    <p>
-      <label>
-        Playback ID (for player)<br>
-        <input type="text" value="<?= esc_attr($playback) ?>" class="regular-text" disabled>
-      </label>
-    </p>
-    <p>
-      <label>
-        External ID (Mux meta)<br>
-        <input type="text" value="<?= esc_attr($ext_id) ?>" class="regular-text" disabled>
-      </label>
-    </p>
+
     <?php
 
-    // thumbnail for the mux playback viewer
-    // paramters are for MUX to generate the thumbnail
-    // https://www.mux.com/docs/guides/get-images-from-a-video
-    if ($playback) {
-      $thumb = esc_url(
-        add_query_arg(
-          [
-            'width'=>480, // width of the thumbnail (in pixels)
-            'height'=>270, // height of the thumbail (in pixels)
-            'time'=>2, //The time (in seconds) of the video timeline where the image should be pulled
-            'fit_mode'=>'smartcrop' // how to fir a thumbnail within the width, height.
-            //valid values are preserve, stretch, crop, smartcrop and pad
-            //- smart crop: and algorithm will attempt to find an are of interest in the image and center it
-            // requires both witdh and height
-          ], 
-            "https://image.mux.com/$playback/thumbnail.jpg"));
-      echo '<p><img src="'.$thumb.'" width="240" height="135" style="border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)"></p>';
-    }
+
 }
 
   public static function render_stream_timeframe_metabox($post) {
@@ -255,15 +178,19 @@ public static function render_asset_metabox($post){
     $endLocal   = self::utc_to_local_input_value($endUtc);
     //_e is a wordpress function that marks the string for translation
     ?>
-    <p><label for="kcfh_live_start_local"><strong><?php _e('Stream start (local)', 'kcfh'); ?></strong></label>
-    <input type="datetime-local" id="kcfh_live_start_local" name="kcfh_live_start_local" value="<?php echo esc_attr($startLocal); ?>" class="widefat"></p>
+    <p>
+      <label for="kcfh_live_start_local"><strong><?php _e('Stream Scheduled START time and Date', 'kcfh'); ?></strong></label>
+      <input type="datetime-local" id="kcfh_live_start_local" name="kcfh_live_start_local" value="<?php echo esc_attr($startLocal); ?>" class="widefat">
+    </p>
 
-    <p><label for="kcfh_live_end_local"><strong><?php _e('Stream end (local)', 'kcfh'); ?></strong></label>
+    <p><label for="kcfh_live_end_local"><strong><?php _e('Stream Scheduled END time and date', 'kcfh'); ?></strong></label>
     <input type="datetime-local" id="kcfh_live_end_local" name="kcfh_live_end_local" value="<?php echo esc_attr($endLocal); ?>" class="widefat"></p>
 
     <p class="description">
-        <?php _e('When within this window, this client will be marked Live automatically.', 'kcfh'); ?>
+        <?php _e('', 'kcfh'); ?>
     </p>
+
+    
     <?php
   }
 
@@ -276,15 +203,17 @@ public static function render_asset_metabox($post){
     // For existing posts with no meta yet, treat as "true" in the UI
     $show_checked = ($show_gallery === '' || $show_gallery === '1');
     ?>
-      <p>
-        <label>
-          <input type="checkbox"
-                 name="kcfh_show_in_gallery"
-                 value="1"
-                 <?php checked($show_checked, true); ?>>
+      
+      <label>
+        <input type="checkbox"
+               name="kcfh_show_in_gallery"
+               value="1"
+               <?php checked($show_checked, true); ?>>
           Show this client in public gallery
-        </label>
-      </p>
+      </label>
+
+      <br><!-- New Line -->
+
       <p>
         <label for="kcfh_dob">Date of Birth</label><br>
         <input type="date" id="kcfh_dob" name="kcfh_dob" value="<?= esc_attr($dob); ?>">
@@ -294,6 +223,7 @@ public static function render_asset_metabox($post){
         <label for="kcfh_dod">Date of Death</label><br>
         <input type="date" id="kcfh_dod" name="kcfh_dod" value="<?= esc_attr($dod); ?>">
       </p>
+      
     <?php
   }
 
