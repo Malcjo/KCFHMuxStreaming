@@ -109,6 +109,30 @@ add_action('utilities_loaded', function(){
 
 });
 
+register_activation_hook(__FILE__, function () {
+
+    // 1) Ensure Stream Admin role exists + has access
+    $role = add_role(
+        'stream_admin',
+        'Stream Admin',
+        [
+            'read' => true,
+            'edit_posts' => true,
+            'manage_options' => true,
+        ]
+    );
+
+    // Ensure caps exist (this updates existing role too)
+    $role = get_role('stream_admin');
+    if ($role) {
+        $role->add_cap('read');
+
+        // Add ONLY what your menu pages require (see Fix 2)
+        $role->add_cap('manage_options'); // if your menu uses manage_options
+        // $role->add_cap('upload_files'); // if you want Media Library
+    }
+
+});
 
 //admin menu: fires before the admin menu loads
 add_action('admin_menu', function () {
@@ -119,6 +143,24 @@ add_action('admin_menu', function () {
 });
 //wp_loaded fires once WP, all plugins and theme are fully loaded and instantiated
 
+add_action('admin_menu', function () {
+    $user = wp_get_current_user();
+    if (!in_array('stream_admin', (array) $user->roles, true)) return;
+
+    $allowed = [
+        'kcfh_streaming',
+        'profile.php',
+        'upload.php', // optional: media library
+    ];
+
+    global $menu;
+    foreach ($menu as $item) {
+        $slug = $item[2] ?? '';
+        if (!in_array($slug, $allowed, true)) {
+            remove_menu_page($slug);
+        }
+    }
+}, 999);
 
 //HEADERS
 //refers to the initial lines of meta data that a web server sends to a clients browser

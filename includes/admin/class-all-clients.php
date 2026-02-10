@@ -11,7 +11,7 @@ final class All_Clients_Page {
   public const SLUG = 'kcfh_clients';
 
   public static function render(): void {
-    if (!current_user_can('manage_options')) wp_die('Nope');
+    if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
 
     // Active toolbar tab
     AdminToolbar::render('clients');
@@ -20,7 +20,8 @@ final class All_Clients_Page {
     $paged     = max(1, (int) ($_GET['paged'] ?? 1));
     $per_page  = max(1, min(100, (int) ($_GET['per_page'] ?? 20)));
     $search    = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
-    $orderby   = in_array(($_GET['orderby'] ?? 'date'), ['date','title','dob','dod','vod','live'], true) ? $_GET['orderby'] : 'date';
+    $orderby_raw = isset($_GET['orderby']) ? sanitize_key(wp_unslash($_GET['orderby'])) : 'date';
+    $orderby     = in_array($orderby_raw, ['date','title','dob','dod','vod','live'], true) ? $orderby_raw : 'date';
     $order     = strtoupper($_GET['order'] ?? 'DESC'); $order = in_array($order, ['ASC','DESC'], true) ? $order : 'DESC';
     $filter    = isset($_GET['filter']) ? sanitize_text_field($_GET['filter']) : ''; // live|vod|empty|all
 
