@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) exit;
 final class Live {
 
     public static function render_settings(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
 
         $live_playback = get_option(Constants::OPT_LIVE_PLAYBACK, '');
         $live_client   = (int) get_option(Constants::OPT_LIVE_CLIENT, 0);
@@ -88,7 +88,7 @@ final class Live {
     }
 
     public static function handle_set_live(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
         $client_id = isset($_GET['client_id']) ? (int) $_GET['client_id'] : 0;
         check_admin_referer('kcfh_set_live_'.$client_id);
 
@@ -115,7 +115,7 @@ final class Live {
     }
 
     public static function handle_save_live_settings(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
         check_admin_referer('kcfh_save_live_settings');
         $playback = isset($_POST['kcfh_live_playback_id']) ? sanitize_text_field($_POST['kcfh_live_playback_id']) : '';
         update_option(Constants::OPT_LIVE_PLAYBACK, $playback);
@@ -124,7 +124,7 @@ final class Live {
     }
 
     public static function handle_set_reconnect_window(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
         check_admin_referer('kcfh_set_reconnect_window');
 
         $win = isset($_POST['window']) ? (int) $_POST['window'] : 0;

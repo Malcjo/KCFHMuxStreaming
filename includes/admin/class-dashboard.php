@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) exit;
 
 final class Dashboard {
     public static function render(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
         
         AdminToolbar::render('dashboard');
         $live_id = (int) get_option(Constants::OPT_LIVE_CLIENT, 0);

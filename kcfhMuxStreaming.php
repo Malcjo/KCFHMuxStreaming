@@ -111,27 +111,70 @@ add_action('utilities_loaded', function(){
 
 register_activation_hook(__FILE__, function () {
 
-    // 1) Ensure Stream Admin role exists + has access
-    $role = add_role(
-        'stream_admin',
-        'Stream Admin',
-        [
-            'read' => true,
-            'edit_posts' => true,
-            'manage_options' => true,
-        ]
-    );
+    // Create the role if it doesn't exist
+    add_role('stream_admin', 'Stream Admin', ['read' => true]);
 
-    // Ensure caps exist (this updates existing role too)
-    $role = get_role('stream_admin');
-    if ($role) {
-        $role->add_cap('read');
-
-        // Add ONLY what your menu pages require (see Fix 2)
-        $role->add_cap('manage_options'); // if your menu uses manage_options
-        // $role->add_cap('upload_files'); // if you want Media Library
+    // Always fetch the role from the DB
+    $stream_role = get_role('stream_admin');
+    if (! $stream_role) {
+        return;
     }
 
+    // Add/update caps every activation
+    $caps_to_add = [
+        'read',
+
+        // Your current gating
+        'manage_options',
+        'kcfh_streaming_access',
+
+        // Editing + publishing
+        'edit_posts',
+        'edit_others_posts',
+        'edit_published_posts',
+        'publish_posts',
+        'read_private_posts',
+
+        // Deleting (optional but usually needed to fully manage posts)
+        'delete_posts',
+        'delete_others_posts',
+        'delete_published_posts',
+
+        // Media uploads (very common needed capability)
+        'upload_files',
+    ];
+
+    foreach ($caps_to_add as $cap) {
+        if (! $stream_role->has_cap($cap)) {
+            $stream_role->add_cap($cap);
+        }
+    }
+
+
+        $roles_to_grant = [
+        'administrator',
+        'stream_admin',
+        // add 'editor' etc if you want them too
+    ];
+
+    foreach ($roles_to_grant as $role_key) {
+        $role = get_role($role_key);
+        if ($role && ! $role->has_cap('kcfh_streaming_access')) {
+            $role->add_cap('kcfh_streaming_access');
+        }
+    }
+});
+
+
+add_action('admin_notices', function () {
+    $user = wp_get_current_user();
+    echo '<div class="notice notice-info"><p>';
+    echo 'User: <strong>' . esc_html($user->user_login) . '</strong><br>';
+    echo 'Roles: ' . esc_html(implode(', ', (array) $user->roles)) . '<br>';
+    echo 'manage_options: <strong>' . (current_user_can('manage_options') ? 'YES' : 'NO') . '</strong><br>';
+    echo 'kcfh_streaming_access: <strong>' . (current_user_can('kcfh_streaming_access') ? 'YES' : 'NO') . '</strong><br>';
+    echo 'edit_posts: <strong>' . (current_user_can('edit_posts') ? 'YES' : 'NO') . '</strong>';
+    echo '</p></div>';
 });
 
 //admin menu: fires before the admin menu loads
@@ -142,6 +185,8 @@ add_action('admin_menu', function () {
   //\KCFH\Streaming\Admin_UI::register_menus();
 });
 //wp_loaded fires once WP, all plugins and theme are fully loaded and instantiated
+
+
 
 add_action('admin_menu', function () {
     $user = wp_get_current_user();

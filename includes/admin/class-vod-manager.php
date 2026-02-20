@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) exit;
 final class Vod_Manager {
 
     public static function render(): void {
-        if (!current_user_can('manage_options')) wp_die('Permission denied');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Permission denied');
 
         AdminToolbar::render('vod');
         $preparing_asset = get_option('kcfh_mp4_preparing_asset', '');
@@ -126,7 +126,7 @@ final class Vod_Manager {
 
     /** Actions */
     public static function handle_enable_mp4(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
         check_admin_referer(Constants::NONCE_VOD_ACTIONS);
 
         $asset_id   = isset($_GET['asset_id']) ? sanitize_text_field($_GET['asset_id']) : '';
@@ -141,7 +141,7 @@ final class Vod_Manager {
     }
 
     public static function handle_download_mp4(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
         check_admin_referer(Constants::NONCE_VOD_ACTIONS);
 
         $asset_id = isset($_GET['asset_id']) ? sanitize_text_field($_GET['asset_id']) : '';
