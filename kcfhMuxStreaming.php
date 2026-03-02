@@ -165,7 +165,22 @@ register_activation_hook(__FILE__, function () {
     }
 });
 
+add_filter('login_redirect', function($redirect_to, $requested_redirect_to, $user){
+    //if login failed or $user isn't a WP_User, do nothing
+    if(!$user instanceof WP_User){
+        return $redirect_to;
+    }
 
+    //if they are your stream_admin role, send to dashboard
+    if(in_array('stream_admin', (array) $user->roles, true)){
+        return admin_url('admin.php?page=kcfh_streaming');
+    }
+
+    //otherwise, follow normal wordpress behaviour
+    return $redirect_to;
+}, 10, 3);
+
+/*
 add_action('admin_notices', function () {
     $user = wp_get_current_user();
     echo '<div class="notice notice-info"><p>';
@@ -176,7 +191,7 @@ add_action('admin_notices', function () {
     echo 'edit_posts: <strong>' . (current_user_can('edit_posts') ? 'YES' : 'NO') . '</strong>';
     echo '</p></div>';
 });
-
+*/
 //admin menu: fires before the admin menu loads
 add_action('admin_menu', function () {
   
