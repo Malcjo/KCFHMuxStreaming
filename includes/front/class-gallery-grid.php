@@ -75,8 +75,8 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             // FINAL GATE: only show when checkbox is ON
             [
                 'key'     => '_kcfh_show_in_gallery',
-                'value'   => '1',
-                'compare' => '=',
+                'value'   => ['1', 1, 'on', 'true'],
+                'compare' => 'IN',
             ],
         ],
     ]);
@@ -99,7 +99,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
 
         // Extra safety: if someone messed with meta manually, honour it again.
         $flag = get_post_meta($id, '_kcfh_show_in_gallery', true);
-        if ($flag !== '1') {
+        if (!in_array($flag, ['1', 'on', 'true'])) {
             continue; // hard stop, no matter what playback/schedule says
         }
 
@@ -204,6 +204,15 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             $slug   = esc_attr(get_post_field('post_name', $id));
             $dob    = esc_html(get_post_meta($id, '_kcfh_dob', true));
             $dod    = esc_html(get_post_meta($id, '_kcfh_dod', true));
+
+            /*
+            if(has_post_thumbnail($id )){
+                $thumbnail_id = get_post_thumbnail_id($id);
+            } else {
+                $image_url = 'http://streamtest.local/wp-content/uploads/2025/09/ChatGPT-Image-Sep-24-2025-05_04_26-PM.png';
+                $thumbnail_id = attachment_url_to_postid($image_url);
+            }
+            */
             
             $isLive = !empty($row['is_live']);
             $isScheduled = !empty($row['is_scheduled']);
@@ -211,14 +220,29 @@ public static function query_clients_for_gallery(string $search = '', int $page 
 
             $link = esc_url(add_query_arg('kcfh_client', $slug, $page_url));
 
+            /*
             // Use Mux thumbnail if we have a playback id (live thumb works too)
             $thumb = '';
+            
             if (!empty($row['playback_id'])) {
                 $pbid  = esc_attr($row['playback_id']);
                 $thumb = sprintf(
                     'https://image.mux.com/%s/thumbnail.jpg?width=640&height=360&fit_mode=smartcrop&time=2',
                     $pbid
                 );
+            }
+                */
+            //$thumb = wp_get_attachment_image_url($thumbnail_id);
+
+            $thumb = '';
+
+            
+            if (has_post_thumbnail($id)) {
+                $thumb = get_the_post_thumbnail_url($id, 'medium');
+            }
+
+            if (!$thumb) {
+                $thumb = 'http://streamtest.local/wp-content/uploads/2025/09/ChatGPT-Image-Sep-24-2025-05_04_26-PM.png';
             }
 
             $dateLine = trim("{$dob} - {$dod}", " - ");
@@ -250,7 +274,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             if ($thumb) {
                 $html .= '<img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="" loading="lazy" />';
             } else {
-                $html .= '<div class="kcfh-thumb kcfh-thumb--placeholder"></div>';
+                $html .= '<div class="kcfh-thumb kcfh-thumb--placeholder">No Image</div>';
             }
             $html .= $badge;
             $html .= '</div>';
@@ -308,6 +332,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             $link = esc_url(add_query_arg('kcfh_client', $slug, $base_url));
 
             // Use Mux thumbnail if we have a playback id (live thumb works too)
+            /*
             $thumb = '';
             if (!empty($row['playback_id'])) {
                 $pbid  = esc_attr($row['playback_id']);
@@ -316,6 +341,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
                     $pbid
                 );
             }
+                */
 
             $dateLine = trim("{$dob} - {$dod}", " - ");
             
@@ -332,6 +358,17 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             } elseif ($dateLine) {
                 $statusLine = $dateLine;
             }
+
+                        $thumb = '';
+
+            
+            if (has_post_thumbnail($id)) {
+                $thumb = get_the_post_thumbnail_url($id, 'medium');
+            }
+
+            if (!$thumb) {
+                $thumb = 'http://streamtest.local/wp-content/uploads/2025/09/ChatGPT-Image-Sep-24-2025-05_04_26-PM.png';
+            }
             
             // Badge logic:
             $badge = '';
@@ -346,7 +383,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             if ($thumb) {
                 $html .= '<img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="" loading="lazy" />';
             } else {
-                $html .= '<div class="kcfh-thumb kcfh-thumb--placeholder"></div>';
+                $html .= '<div class="kcfh-thumb kcfh-thumb--placeholder">No Image</div>';
             }
             $html .= $badge;
             $html .= '</div>';

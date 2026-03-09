@@ -253,50 +253,59 @@ public static function render_asset_metabox($post){
     update_post_meta($post_id, '_kcfh_show_in_gallery', $show_gallery);
 
     // VOD dropdown selection
-    $new_asset_id = isset($_POST['kcfh_asset_id']) ? sanitize_text_field($_POST['kcfh_asset_id']) : '';
-    $old_asset_id = get_post_meta($post_id, self::KCFH_ASSET_ID, true);
+// VOD dropdown selection: only update if the form actually submitted this field
+if (array_key_exists('kcfh_asset_id', $_POST)) {
 
-  if ($new_asset_id === '') {
+    $new_asset_id = sanitize_text_field((string) $_POST['kcfh_asset_id']);
+    $old_asset_id = (string) get_post_meta($post_id, self::KCFH_ASSET_ID, true);
 
-      // Unassign
-      delete_post_meta($post_id, self::KCFH_ASSET_ID);
-      delete_post_meta($post_id, '_kcfh_playback_id');
-      delete_post_meta($post_id, '_kcfh_vod_title');
-      delete_post_meta($post_id, '_kcfh_external_id');
+    if ($new_asset_id === '') {
+        // Explicit unassign (user chose blank)
+        delete_post_meta($post_id, self::KCFH_ASSET_ID);
+        delete_post_meta($post_id, '_kcfh_playback_id');
+        delete_post_meta($post_id, '_kcfh_vod_title');
+        delete_post_meta($post_id, '_kcfh_external_id');
     } elseif ($new_asset_id !== $old_asset_id) {
-      // Make it exclusive: unassign this asset from other clients
-      $others = get_posts([
-        'post_type'      => self::POST_TYPE,
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'no_found_rows'  => true,
-        'post__not_in'   => [$post_id],
-        'meta_query'     => [[ 'key' => self::KCFH_ASSET_ID, 'value' => $new_asset_id, 'compare' => '=' ]],
-      ]);
-      foreach ($others as $oid) {
-        delete_post_meta($oid, self::KCFH_ASSET_ID);
-        delete_post_meta($oid, '_kcfh_playback_id');
-        delete_post_meta($oid, '_kcfh_vod_title');
-        delete_post_meta($oid, '_kcfh_external_id');
-      }
 
-      // Fetch asset details from Mux for playback/meta
-      $asset = \KCFH\Streaming\Asset_Service::get_asset($new_asset_id, 120);
-      if (!is_wp_error($asset)) {
-        $playback = \KCFH\Streaming\Asset_Service::first_public_playback_id($asset);
-        $title    = !empty($asset['title']) ? $asset['title']
-                  : (!empty($asset['passthrough']) ? $asset['passthrough'] : '');
-        $ext_id   = !empty($asset['external_id']) ? $asset['external_id'] : '';
+        // Make it exclusive: unassign this asset from other clients
+        $others = get_posts([
+            'post_type'      => self::POST_TYPE,
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'post__not_in'   => [$post_id],
+            'meta_query'     => [[
+                'key'     => self::KCFH_ASSET_ID,
+                'value'   => $new_asset_id,
+                'compare' => '=',
+            ]],
+        ]);
 
-        update_post_meta($post_id, self::KCFH_ASSET_ID,     $new_asset_id);
-        if ($playback) update_post_meta($post_id, '_kcfh_playback_id', $playback);
-        update_post_meta($post_id, '_kcfh_vod_title',   sanitize_text_field($title));
-        update_post_meta($post_id, '_kcfh_external_id', sanitize_text_field($ext_id));
-      } else {
-        // Save at least the chosen ID; you can refresh meta later
-        update_post_meta($post_id, self::KCFH_ASSET_ID, $new_asset_id);
-      }
+        foreach ($others as $oid) {
+            delete_post_meta($oid, self::KCFH_ASSET_ID);
+            delete_post_meta($oid, '_kcfh_playback_id');
+            delete_post_meta($oid, '_kcfh_vod_title');
+            delete_post_meta($oid, '_kcfh_external_id');
+        }
+
+        // Fetch asset details from Mux for playback/meta
+        $asset = \KCFH\Streaming\Asset_Service::get_asset($new_asset_id, 120);
+        if (!is_wp_error($asset)) {
+            $playback = \KCFH\Streaming\Asset_Service::first_public_playback_id($asset);
+            $title    = !empty($asset['title']) ? $asset['title']
+                      : (!empty($asset['passthrough']) ? $asset['passthrough'] : '');
+            $ext_id   = !empty($asset['external_id']) ? $asset['external_id'] : '';
+
+            update_post_meta($post_id, self::KCFH_ASSET_ID, $new_asset_id);
+            if ($playback) update_post_meta($post_id, '_kcfh_playback_id', $playback);
+            update_post_meta($post_id, '_kcfh_vod_title', sanitize_text_field($title));
+            update_post_meta($post_id, '_kcfh_external_id', sanitize_text_field($ext_id));
+        } else {
+            update_post_meta($post_id, self::KCFH_ASSET_ID, $new_asset_id);
+        }
     }
+}
+// else: do nothing; keep existing VOD assignment untouched
 
 
     // Handle time saving
