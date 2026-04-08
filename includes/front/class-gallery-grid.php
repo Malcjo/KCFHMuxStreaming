@@ -121,7 +121,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             'playback_id'  => $hasPlayback ? $play['playback_id'] : '',
             'is_live'      => $hasPlayback ? !empty($play['is_live']) : false,
             'is_scheduled' => !$hasPlayback && $isScheduledFuture,
-            'start_utc'    => $isScheduledFuture ? $startUtc : 0,
+            'start_utc'    => $startUtc,
         ];
     }
 
@@ -157,21 +157,21 @@ public static function query_clients_for_gallery(string $search = '', int $page 
     //sort past/VOD clients by my recent DOD first
 
     usort($past, function($a, $b){
-        $dodA = get_post_meta((int) $a['ID'], '_kcfh_dod', true);
-        $dodB = get_post_meta((int) $b['ID'], '_kcfh_dod', true);
+        $startA = (int) ($a['start_utc'] ?? 0);
+        $startB = (int) ($b['start_utc'] ?? 0);
 
         // Push empty DODs to the bottom
-        if(empty($dodA) && empty($dodB))
+        if($startA ===0 && $startB===0)
             return 0;
         
-        if (empty($dodA)) 
+        if (empty($startA)) 
         return 1;
         
-        if (empty($dodB)) 
+        if (empty($startB)) 
             return -1;
         
         //Decending order: newst DOD first
-        return strcmp($dodB, $dodA);
+        return $startB <=> $startA;
     });
 
     // Keep $live and $past in their existing order (which is already title ASC)
