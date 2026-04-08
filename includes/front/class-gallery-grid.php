@@ -154,6 +154,26 @@ public static function query_clients_for_gallery(string $search = '', int $page 
         return ($a['start_utc'] <=> $b['start_utc']);
     });
 
+    //sort past/VOD clients by my recent DOD first
+
+    usort($past, function($a, $b){
+        $dodA = get_post_meta((int) $a['ID'], '_kcfh_dod', true);
+        $dodB = get_post_meta((int) $b['ID'], '_kcfh_dod', true);
+
+        // Push empty DODs to the bottom
+        if(empty($dodA) && empty($dodB))
+            return 0;
+        
+        if (empty($dodA)) 
+        return 1;
+        
+        if (empty($dodB)) 
+            return -1;
+        
+        //Decending order: newst DOD first
+        return strcmp($dodB, $dodA);
+    });
+
     // Keep $live and $past in their existing order (which is already title ASC)
     $ordered = array_merge($live, $upcoming, $past);
 
@@ -242,7 +262,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             }
 
             if (!$thumb) {
-                $thumb = 'http://streamtest.local/wp-content/uploads/2025/09/ChatGPT-Image-Sep-24-2025-05_04_26-PM.png';
+                $thumb = 'https://kapiticrematorium.co.nz/wp-content/uploads/2026/03/BlankProfilePicture.png';
             }
 
             $dateLine = trim("{$dob} - {$dod}", " - ");
@@ -367,7 +387,8 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             }
 
             if (!$thumb) {
-                $thumb = 'http://streamtest.local/wp-content/uploads/2025/09/ChatGPT-Image-Sep-24-2025-05_04_26-PM.png';
+                $thumb = 'https://kapiticrematorium.co.nz/wp-content/uploads/2026/03/BlankProfilePicture.png';
+                
             }
             
             // Badge logic:
