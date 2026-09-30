@@ -15,6 +15,7 @@ final class Menu {
         add_action('admin_post_kcfh_set_reconnect_window', [Live::class, 'handle_set_reconnect_window']);
         add_action('admin_post_kcfh_enable_mp4',           [Vod_Manager::class, 'handle_enable_mp4']);
         add_action('admin_post_kcfh_download_mp4',         [Vod_Manager::class, 'handle_download_mp4']);
+        add_action('admin_post_kcfh_create_vod_clip',      [Vod_Manager::class, 'handle_create_clip']);
 
         // keep your existing assign_vod handler
         add_action('admin_post_kcfh_assign_vod', ['KCFH\\Streaming\\Admin_Util', 'handle_assign_vod']);

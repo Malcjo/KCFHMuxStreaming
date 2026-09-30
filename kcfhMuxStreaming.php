@@ -2,7 +2,7 @@
 /**
  * Plugin Name: KCFH-Streaming
  * Description: Secure Mux integration (shortcodes, utilities). First feature: [kcfh_stream_gallery] gallery of Mux VOD assets.
- * Version:     0.1.0
+ * Version:     0.2.0
  * Author:      KCFH
  * License:     GPLv2 or later
  */
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) exit;
 
 
 
-define('KCFH_STREAMING_VERSION', '0.1.0');
+define('KCFH_STREAMING_VERSION', '0.2.0');
 
 //__FILE__ provides the full path and filename of the current file where this is being used
 define('KCFH_STREAMING_FILE', __FILE__);

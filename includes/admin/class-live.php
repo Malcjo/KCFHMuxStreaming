@@ -23,6 +23,10 @@ final class Live {
             echo '<div class="notice notice-error"><p><strong>Missing RTMP URL or Stream Key.</strong> Add KCFH_LIVE_RTMP_URL and KCFH_LIVE_STREAM_KEY to <code>wp-config.php</code>.</p></div>';
         }
 
+        if (!$stream_id) {
+            echo '<div class="notice notice-error"><p><strong>Missing Mux Live Stream ID.</strong> Add KCFH_LIVE_STREAM_ID to <code>wp-config.php</code> so scheduled start/stop can enable and disable ingest.</p></div>';
+        }
+
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
         wp_nonce_field('kcfh_save_live_settings');
         echo '<input type="hidden" name="action" value="kcfh_save_live_settings">';
@@ -62,8 +66,8 @@ final class Live {
         echo '</td></tr>';
 
         echo '<tr><th scope="row">Live Stream ID</th><td>';
-        echo $stream_id ? '<code>'.esc_html($stream_id).'</code>' : '<em>Optional</em>';
-        echo '<p class="description">Optional. Useful for future API automation.</p>';
+        echo $stream_id ? '<code>'.esc_html($stream_id).'</code>' : '<em>Not set</em>';
+        echo '<p class="description">Required for the scheduled Mux hard stop and automatic re-enable.</p>';
         echo '</td></tr>';
 
         echo '</tbody></table>';
@@ -76,8 +80,10 @@ final class Live {
             } else {
                 $latency = !empty($ls['latency_mode']) ? $ls['latency_mode'] : 'standard';
                 $reconn  = isset($ls['reconnect_window']) ? (int)$ls['reconnect_window'] : 0;
+                $status  = !empty($ls['status']) ? sanitize_key($ls['status']) : 'unknown';
                 echo '<h2>Mux Live Stream</h2><table class="form-table"><tbody>';
                 echo '<tr><th>Live Stream ID</th><td><code>'.esc_html($stream_id).'</code></td></tr>';
+                echo '<tr><th>Status</th><td><code>'.esc_html($status).'</code></td></tr>';
                 echo '<tr><th>Latency Mode</th><td><code>'.esc_html($latency).'</code></td></tr>';
                 echo '<tr><th>Reconnect Window</th><td><code>'.esc_html($reconn).'</code> seconds</td></tr>';
                 echo '</tbody></table>';
@@ -94,20 +100,14 @@ final class Live {
 
         update_option(Constants::OPT_LIVE_CLIENT, $client_id);
 
-        $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '';
-        if ($live_stream_id) {
-            $resp = Live_Service::update_live_stream($live_stream_id, [
-                'reconnect_window' => 600,
-                'use_slate_for_standard_latency' => true,
-                'passthrough' => 'client-' . (int)$client_id,
-                'new_asset_settings' => [
-                    'playback_policy' => ['public'],
-                    'passthrough'     => 'client-' . (int)$client_id,
-                ],
-            ]);
-            if (is_wp_error($resp)) {
-                error_log('[KCFH] Mux update_live_stream failed: ' . $resp->get_error_message());
-            }
+        if ($client_id > 0) {
+            $response = Live_Service::refresh_for_client($client_id);
+        } else {
+            $response = Live_Service::force_stop_configured_stream();
+        }
+
+        if (is_wp_error($response)) {
+            error_log('[KCFH] Mux live action failed: ' . $response->get_error_message());
         }
 
         wp_safe_redirect(admin_url('admin.php?page=kcfh_streaming'));

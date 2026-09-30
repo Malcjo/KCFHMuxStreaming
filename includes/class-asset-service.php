@@ -29,6 +29,7 @@ class Asset_Service {
             'order'     => 'created_at',         // created_at, updated_at, etc.
             'direction' => 'desc',               // asc|desc
             'status'    => null,                 // 'ready', 'errored', etc.
+            'passthrough' => null,
         ];
         $args = wp_parse_args($args, $defaults);
 
@@ -51,10 +52,12 @@ class Asset_Service {
         ];
         if (!empty($args['page']))   { $qs['page'] = sanitize_text_field($args['page']); }
         if (!empty($args['status'])) { $qs['status'] = sanitize_text_field($args['status']); }
+        if (!empty($args['passthrough'])) { $qs['passthrough'] = sanitize_text_field($args['passthrough']); }
 
         $url = add_query_arg($qs, self::API_BASE . '/assets');
 
-        $cache_key = KCFH_STREAMING_CACHE_PREFIX . 'assets_' . md5(wp_json_encode($qs));
+        $cache_version = (int) get_option('kcfh_streaming_cache_version', 1);
+        $cache_key = KCFH_STREAMING_CACHE_PREFIX . 'assets_' . $cache_version . '_' . md5(wp_json_encode($qs));
         if ($cache_ttl > 0) {
             $cached = get_transient($cache_key);
             if ($cached !== false) return $cached;
@@ -107,6 +110,7 @@ class Asset_Service {
                 'id'           => isset($a['id']) ? sanitize_text_field($a['id']) : '',
                 'status'       => isset($a['status']) ? sanitize_text_field($a['status']) : '',
                 'created_at'   => isset($a['created_at']) ? sanitize_text_field($a['created_at']) : '',
+                'duration'     => isset($a['duration']) ? (float) $a['duration'] : 0,
                 'playback_ids' => isset($a['playback_ids']) && is_array($a['playback_ids']) ? $a['playback_ids'] : [],
                 
                 'title'        => !empty($meta['title']) ? sanitize_text_field($meta['title'])
@@ -114,6 +118,8 @@ class Asset_Service {
                 'creator_id'   => !empty($meta['creator_id'])  ? sanitize_text_field($meta['creator_id'])  : '',
                 'external_id'  => !empty($meta['external_id']) ? sanitize_text_field($meta['external_id']) : '',
                 'passthrough'  => isset($a['passthrough']) ? sanitize_text_field($a['passthrough']) : '',
+                'source_asset_id' => isset($a['source_asset_id']) ? sanitize_text_field($a['source_asset_id']) : '',
+                'video_quality' => isset($a['video_quality']) ? sanitize_text_field($a['video_quality']) : '',
             ];
         }, $json['data']);
 
@@ -417,6 +423,85 @@ public static function update_asset_title(string $asset_id, string $title) {
     delete_transient($cache_key);
 
     return json_decode($body, true);
+}
+
+/**
+ * Create a new frame-accurate asset clip from an existing Mux asset.
+ * Mux assets are immutable, so trimming always creates a separate asset.
+ */
+public static function create_asset_clip(
+    string $source_asset_id,
+    float $start_time,
+    float $end_time,
+    string $title,
+    string $video_quality = 'basic'
+) {
+    $source_asset_id = trim($source_asset_id);
+    $title = trim($title);
+
+    if ($source_asset_id === '' || $start_time < 0 || $end_time <= $start_time) {
+        return new \WP_Error('kcfh_mux_invalid_clip', 'The clip start and end times are invalid.');
+    }
+
+    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
+    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    if (!$token_id || !$token_secret) {
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+    }
+
+    $allowed_quality = ['basic', 'plus'];
+    if (!in_array($video_quality, $allowed_quality, true)) {
+        $video_quality = 'basic';
+    }
+
+    $payload = [
+        'inputs' => [[
+            'url'        => 'mux://assets/' . $source_asset_id,
+            'start_time' => round($start_time, 3),
+            'end_time'   => round($end_time, 3),
+        ]],
+        'playback_policies' => ['public'],
+        'video_quality'     => $video_quality,
+        'meta' => [
+            'title'       => $title !== '' ? $title : 'Trimmed video',
+            'creator_id'  => 'kcfh-streaming',
+            'external_id' => 'trim-' . substr($source_asset_id, 0, 80) . '-' . time(),
+        ],
+    ];
+
+    $response = wp_remote_post(self::API_BASE . '/assets', [
+        'headers' => [
+            'Authorization' => 'Basic ' . base64_encode($token_id . ':' . $token_secret),
+            'Accept'        => 'application/json',
+            'Content-Type'  => 'application/json',
+        ],
+        'body'    => wp_json_encode($payload),
+        'timeout' => 30,
+    ]);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $status_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+    $decoded_body = json_decode($response_body, true);
+
+    if ($status_code < 200 || $status_code >= 300 || empty($decoded_body['data'])) {
+        return new \WP_Error(
+            'kcfh_mux_http',
+            'Mux clip creation failed (' . $status_code . '): ' . $response_body
+        );
+    }
+
+    self::bust_cache();
+    return $decoded_body['data'];
+}
+
+/** Make subsequent Mux list requests skip older cached results. */
+public static function bust_cache(): void {
+    $current_version = (int) get_option('kcfh_streaming_cache_version', 1);
+    update_option('kcfh_streaming_cache_version', $current_version + 1, false);
 }
 
 

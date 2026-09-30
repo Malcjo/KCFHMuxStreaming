@@ -36,11 +36,22 @@ class Gallery_Display
      */
     public static function register_assets(): void
     {
+        $script_path = KCFH_STREAMING_DIR . 'assets/kcfh_gallery.js';
+        $style_path  = KCFH_STREAMING_DIR . 'assets/kcfh_gallery.css';
+
+        $script_version = file_exists($script_path)
+            ? (string) filemtime($script_path)
+            : '1.0.0';
+
+        $style_version = file_exists($style_path)
+            ? (string) filemtime($style_path)
+            : '1.0.0';
+
         wp_register_script(
             self::SCRIPT_HANDLE,
             plugins_url('../../assets/kcfh_gallery.js', __FILE__),
             ['jquery'],
-            '1.0.0',
+            $script_version,
             true
         );
 
@@ -48,7 +59,7 @@ class Gallery_Display
             self::STYLE_HANDLE,
             plugins_url('../../assets/kcfh_gallery.css', __FILE__),
             [],
-            '1.0.0'
+            $style_version
         );
 
     }

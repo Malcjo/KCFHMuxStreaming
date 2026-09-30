@@ -23,8 +23,23 @@
 }
 .kcfh-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.06); }
 
-.kcfh-thumb-wrap { position: relative; aspect-ratio: 16/9; background: #f6f7f8; }
-.kcfh-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.kcfh-thumb-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f6f7f8;
+}
+.kcfh-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  display: block;
+}
 .kcfh-thumb--placeholder { width: 100%; height: 100%; background: #e9ecef; }
 
 .kcfh-badge-live {

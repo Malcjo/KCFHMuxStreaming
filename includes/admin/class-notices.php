@@ -7,7 +7,7 @@ final class Notices {
     /** Show a single WP admin notice */
     public static function show(string $code = '', string $message = ''): void {
         if (!$code && !$message) return;
-        $success_codes = ['assigned','unassigned','mp4_req','mp4_wait'];
+        $success_codes = ['assigned','unassigned','mp4_req','mp4_wait','clip_created'];
         $cls = in_array($code, $success_codes, true) ? 'success' : 'error';
         $text = $message ?: esc_html($code);
         echo '<div class="notice notice-' . esc_attr($cls) . '"><p>' . $text . '</p></div>';
@@ -18,7 +18,7 @@ final class Notices {
         $url = add_query_arg([
             'page'        => 'kcfh_vod_manager',
             'kcfh_notice' => $code,
-            'kcfh_msg'    => rawurlencode($message),
+            'kcfh_msg'    => $message,
         ], admin_url('admin.php'));
         wp_safe_redirect($url);
         exit;

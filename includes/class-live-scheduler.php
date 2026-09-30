@@ -46,14 +46,16 @@ class Live_Scheduler {
         $now   = time();
         $grace = 5; // seconds
 
+        if ($endUtc && $endUtc <= $now) {
+            self::handle_end($post_id);
+            return;
+        }
+
         if ($startUtc) {
             if ($startUtc > ($now + $grace)) {
                 wp_schedule_single_event($startUtc, self::HOOK_START, [$post_id]);
             } else {
-                self::set_live_client($post_id);
-                if (!wp_next_scheduled(self::HOOK_VERIFY, [$post_id])) {
-                    wp_schedule_single_event($now + 60, self::HOOK_VERIFY, [$post_id]);
-                }
+                self::handle_start($post_id);
             }
         }
 
@@ -70,7 +72,10 @@ class Live_Scheduler {
         
         // Force an immediate refresh (helps with initial lag)
         if (class_exists(__NAMESPACE__ . '\\Live_Service')) {
-            Live_Service::refresh_for_client($post_id);
+            $refresh_result = Live_Service::refresh_for_client($post_id);
+            if (is_wp_error($refresh_result)) {
+                error_log('[KCFH] Could not enable/configure Mux at scheduled start: ' . $refresh_result->get_error_message());
+            }
         }
 
         // Schedule a short follow-up to “nudge” again in 1 minute
@@ -91,6 +96,30 @@ class Live_Scheduler {
 
 
     public static function handle_end($post_id) {
+        $current_live_client = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
+
+        // A delayed retry from an older service must never stop a newer service.
+        if ($current_live_client && $current_live_client !== (int) $post_id) {
+            return;
+        }
+
+        if (class_exists(__NAMESPACE__ . '\\Live_Service')) {
+            $stop_result = Live_Service::force_stop_configured_stream();
+
+            if (is_wp_error($stop_result)) {
+                $attempts = (int) get_post_meta($post_id, '_kcfh_mux_stop_attempts', true) + 1;
+                update_post_meta($post_id, '_kcfh_mux_stop_attempts', $attempts);
+                error_log('[KCFH] Could not force-stop Mux at scheduled end: ' . $stop_result->get_error_message());
+
+                if ($attempts < 3 && !wp_next_scheduled(self::HOOK_END, [$post_id])) {
+                    wp_schedule_single_event(time() + 60, self::HOOK_END, [$post_id]);
+                }
+            } else {
+                delete_post_meta($post_id, '_kcfh_mux_stop_attempts');
+                update_post_meta($post_id, '_kcfh_last_mux_stop_at', time());
+            }
+        }
+
         self::unset_live_if_matches($post_id);
 
                 // Optional: one more refresh to clear caches / posters
@@ -145,9 +174,9 @@ class Live_Scheduler {
 
         $currentLive = (int) get_option(Admin_UI::OPT_LIVE_CLIENT, 0);
         if ($liveShouldBe && $currentLive !== $liveShouldBe) {
-            self::set_live_client($liveShouldBe);
+            self::handle_start($liveShouldBe);
         } elseif (!$liveShouldBe && $currentLive) {
-            update_option(Admin_UI::OPT_LIVE_CLIENT, 0);
+            self::handle_end($currentLive);
         }
     }
 }
