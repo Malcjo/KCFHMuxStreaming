@@ -163,13 +163,13 @@ public static function query_clients_for_gallery(string $search = '', int $page 
         // Push empty DODs to the bottom
         if($startA ===0 && $startB===0)
             return 0;
-        
-        if (empty($startA)) 
+
+        if (empty($startA))
         return 1;
-        
-        if (empty($startB)) 
+
+        if (empty($startB))
             return -1;
-        
+
         //Decending order: newst DOD first
         return $startB <=> $startA;
     });
@@ -233,7 +233,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
                 $thumbnail_id = attachment_url_to_postid($image_url);
             }
             */
-            
+
             $isLive = !empty($row['is_live']);
             $isScheduled = !empty($row['is_scheduled']);
             $startUtc    = isset($row['start_utc']) ? (int) $row['start_utc'] : 0;
@@ -243,7 +243,8 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             /*
             // Use Mux thumbnail if we have a playback id (live thumb works too)
             $thumb = '';
-            
+            $using_default_image = false;
+
             if (!empty($row['playback_id'])) {
                 $pbid  = esc_attr($row['playback_id']);
                 $thumb = sprintf(
@@ -256,17 +257,41 @@ public static function query_clients_for_gallery(string $search = '', int $page 
 
             $thumb = '';
 
-            
+
             if (has_post_thumbnail($id)) {
-                $thumb = get_the_post_thumbnail_url($id, 'medium');
+                $thumb = get_the_post_thumbnail_url($id, 'large');
+            }
+
+            if (!$thumb) {
+                $default_image_id = (int) get_option(
+                    \KCFH\Streaming\Admin\Constants::OPT_DEFAULT_GALLERY_IMAGE,
+                    0
+                );
+                $thumb = $default_image_id
+                    ? wp_get_attachment_image_url($default_image_id, 'large')
+                    : '';
+                $using_default_image = (bool) $thumb;
             }
 
             if (!$thumb) {
                 $thumb = 'https://kapiticrematorium.co.nz/wp-content/uploads/2026/03/BlankProfilePicture.png';
+                $using_default_image = true;
             }
 
+            $position_x = $using_default_image
+                ? 50
+                : self::normalise_image_position(get_post_meta($id, \KCFH\Streaming\CPT_Client::META_IMAGE_POSITION_X, true));
+            $position_y = $using_default_image
+                ? 50
+                : self::normalise_image_position(get_post_meta($id, \KCFH\Streaming\CPT_Client::META_IMAGE_POSITION_Y, true));
+            $image_zoom = $using_default_image
+                ? 100
+                : self::normalise_image_zoom(get_post_meta($id, \KCFH\Streaming\CPT_Client::META_IMAGE_ZOOM, true));
+            $image_position = $position_x . '% ' . $position_y . '%';
+            $image_scale = $image_zoom / 100;
+
             $dateLine = trim("{$dob} - {$dod}", " - ");
-            
+
             // Build a status line with proper timezone conversion
             $statusLine = '';
             if ($isLive) {
@@ -280,7 +305,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             } elseif ($dateLine) {
                 $statusLine = $dateLine;
             }
-            
+
             // Badge logic:
             $badge = '';
             if ($isLive) {
@@ -290,9 +315,9 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             }
 
             $html .= '<a class="kcfh-card" href="' . $link . '" data-name="' . esc_attr($name) . '">';
-            $html .= '<div class="kcfh-thumb-wrap">';
+            $html .= '<div class="kcfh-thumb-wrap" style="position:relative;width:100%;aspect-ratio:3/4;overflow:hidden;background:#f6f7f8;">';
             if ($thumb) {
-                $html .= '<img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="" loading="lazy" />';
+                $html .= '<img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="' . esc_attr($name) . '" loading="lazy" style="display:block;width:100%;height:100%;object-fit:cover;object-position:' . esc_attr($image_position) . ';transform:scale(' . esc_attr($image_scale) . ');transform-origin:' . esc_attr($image_position) . ';" />';
             } else {
                 $html .= '<div class="kcfh-thumb kcfh-thumb--placeholder">No Image</div>';
             }
@@ -344,7 +369,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
 
             $dob    = esc_html(get_post_meta($id, '_kcfh_dob', true));
             $dod    = esc_html(get_post_meta($id, '_kcfh_dod', true));
-            
+
             $isLive = !empty($row['is_live']);
             $isScheduled = !empty($row['is_scheduled']);
             $startUtc    = isset($row['start_utc']) ? (int) $row['start_utc'] : 0;
@@ -364,7 +389,7 @@ public static function query_clients_for_gallery(string $search = '', int $page 
                 */
 
             $dateLine = trim("{$dob} - {$dod}", " - ");
-            
+
             // Build a status line with proper timezone conversion
             $statusLine = '';
             if ($isLive) {
@@ -379,18 +404,42 @@ public static function query_clients_for_gallery(string $search = '', int $page 
                 $statusLine = $dateLine;
             }
 
-                        $thumb = '';
+            $thumb = '';
+            $using_default_image = false;
 
-            
+
             if (has_post_thumbnail($id)) {
-                $thumb = get_the_post_thumbnail_url($id, 'medium');
+                $thumb = get_the_post_thumbnail_url($id, 'large');
+            }
+
+            if (!$thumb) {
+                $default_image_id = (int) get_option(
+                    \KCFH\Streaming\Admin\Constants::OPT_DEFAULT_GALLERY_IMAGE,
+                    0
+                );
+                $thumb = $default_image_id
+                    ? wp_get_attachment_image_url($default_image_id, 'large')
+                    : '';
+                $using_default_image = (bool) $thumb;
             }
 
             if (!$thumb) {
                 $thumb = 'https://kapiticrematorium.co.nz/wp-content/uploads/2026/03/BlankProfilePicture.png';
-                
+                $using_default_image = true;
             }
-            
+
+            $position_x = $using_default_image
+                ? 50
+                : self::normalise_image_position(get_post_meta($id, \KCFH\Streaming\CPT_Client::META_IMAGE_POSITION_X, true));
+            $position_y = $using_default_image
+                ? 50
+                : self::normalise_image_position(get_post_meta($id, \KCFH\Streaming\CPT_Client::META_IMAGE_POSITION_Y, true));
+            $image_zoom = $using_default_image
+                ? 100
+                : self::normalise_image_zoom(get_post_meta($id, \KCFH\Streaming\CPT_Client::META_IMAGE_ZOOM, true));
+            $image_position = $position_x . '% ' . $position_y . '%';
+            $image_scale = $image_zoom / 100;
+
             // Badge logic:
             $badge = '';
             if ($isLive) {
@@ -400,9 +449,9 @@ public static function query_clients_for_gallery(string $search = '', int $page 
             }
 
             $html .= '<a class="kcfh-card" href="' . $link . '" data-name="' . esc_attr($name) . '">';
-            $html .= '<div class="kcfh-thumb-wrap">';
+            $html .= '<div class="kcfh-thumb-wrap" style="position:relative;width:100%;aspect-ratio:3/4;overflow:hidden;background:#f6f7f8;">';
             if ($thumb) {
-                $html .= '<img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="" loading="lazy" />';
+                $html .= '<img class="kcfh-thumb" src="' . esc_url($thumb) . '" alt="' . esc_attr($name) . '" loading="lazy" style="display:block;width:100%;height:100%;object-fit:cover;object-position:' . esc_attr($image_position) . ';transform:scale(' . esc_attr($image_scale) . ');transform-origin:' . esc_attr($image_position) . ';" />';
             } else {
                 $html .= '<div class="kcfh-thumb kcfh-thumb--placeholder">No Image</div>';
             }
@@ -463,5 +512,23 @@ public static function query_clients_for_gallery(string $search = '', int $page 
         $html .= '</nav>';
 
         return $html;
+    }
+
+    private static function normalise_image_position($value): int
+    {
+        if ($value === '' || !is_numeric($value)) {
+            return 50;
+        }
+
+        return max(0, min(100, (int) round((float) $value)));
+    }
+
+    private static function normalise_image_zoom($value): int
+    {
+        if ($value === '' || !is_numeric($value)) {
+            return 100;
+        }
+
+        return max(100, min(200, (int) round((float) $value)));
     }
 }

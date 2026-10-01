@@ -26,7 +26,7 @@
 .kcfh-thumb-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 3 / 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -36,8 +36,10 @@
 .kcfh-thumb {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center center;
+  object-fit: cover;
+  object-position: var(--kcfh-image-position, 50% 50%);
+  transform: scale(var(--kcfh-image-zoom, 1));
+  transform-origin: var(--kcfh-image-position, 50% 50%);
   display: block;
 }
 .kcfh-thumb--placeholder { width: 100%; height: 100%; background: #e9ecef; }
@@ -72,7 +74,7 @@
   flex: 1;
   padding: 8px 10px;      /* ↑ change this to make it taller/shorter */
   font-size: 14px;        /* smaller text = visually smaller field */
-  line-height: 1.2;       
+  line-height: 1.2;
   border-radius: 4px;
   box-sizing: border-box;
 }

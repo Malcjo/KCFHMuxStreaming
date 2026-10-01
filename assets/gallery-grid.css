@@ -30,12 +30,14 @@
 }
 .kcfh-card-link { text-decoration: none; color: inherit; display: block; }
 
-.kcfh-thumb { position: relative; aspect-ratio: 1/1; background: #f2f2f2; }
+.kcfh-thumb { position: relative; aspect-ratio: 3/4; background: #f2f2f2; }
 .kcfh-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 30%;
+  object-position: var(--kcfh-image-position, 50% 50%);
+  transform: scale(var(--kcfh-image-zoom, 1));
+  transform-origin: var(--kcfh-image-position, 50% 50%);
   display: block;
 }
 .kcfh-thumb-fallback { width: 100%; height: 100%; display: grid; place-items: center; color: #666; font-size: .95rem; }

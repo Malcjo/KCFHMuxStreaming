@@ -9,23 +9,49 @@ class CPT_Client {
   const META_START_AT = '_kcfh_live_start_at'; // UTC timestamp
   const META_END_AT   = '_kcfh_live_end_at';   // UTC timestamp
   const KCFH_ASSET_ID = '_kcfh_asset_id';
+  const META_IMAGE_POSITION_X = '_kcfh_image_position_x';
+  const META_IMAGE_POSITION_Y = '_kcfh_image_position_y';
+  const META_IMAGE_ZOOM = '_kcfh_image_zoom';
 
   public static function init() {
     add_action('init', [__CLASS__, 'register']);
     add_action('add_meta_boxes', [__CLASS__, 'meta_boxes']);
     add_action('save_post_' . self::POST_TYPE, [__CLASS__, 'save_meta']);
+    add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_assets']);
 
   }
 
-  // There are many different types of content in WordPress. 
+  public static function enqueue_admin_assets($hook_suffix) {
+    if (!in_array($hook_suffix, ['post.php', 'post-new.php'], true)) {
+      return;
+    }
+
+    $screen = get_current_screen();
+    if (!$screen || $screen->post_type !== self::POST_TYPE) {
+      return;
+    }
+
+    $script_path = KCFH_STREAMING_DIR . 'assets/admin-image-tools.js';
+    $version = file_exists($script_path) ? (string) filemtime($script_path) : KCFH_STREAMING_VERSION;
+
+    wp_enqueue_script(
+      'kcfh-admin-image-tools',
+      KCFH_STREAMING_URL . 'assets/admin-image-tools.js',
+      [],
+      $version,
+      true
+    );
+  }
+
+  // There are many different types of content in WordPress.
   // These content types are normally described as Post Types
 
-  // Post types can support any number of built-in core features such as 
-  // meta boxes, 
-  // custom fields, 
-  // post thumbnails, 
-  // post statuses, 
-  // comments, 
+  // Post types can support any number of built-in core features such as
+  // meta boxes,
+  // custom fields,
+  // post thumbnails,
+  // post statuses,
+  // comments,
   // and more.
   public static function register() {
     register_post_type(self::POST_TYPE, [
@@ -50,11 +76,11 @@ class CPT_Client {
   public static function meta_boxes() {
     //Main details box
     add_meta_box(
-      'kcfh_client_details', 
-      'Client Details', 
+      'kcfh_client_details',
+      'Client Details',
       [__CLASS__, 'render_meta'],
-      self::POST_TYPE, 
-      'normal', 
+      self::POST_TYPE,
+      'normal',
       'high');
 
       add_meta_box(
@@ -66,12 +92,149 @@ class CPT_Client {
       'low'
     );
 
+    add_meta_box(
+      'kcfh_client_image_framing',
+      'Gallery Image Framing',
+      [__CLASS__, 'render_image_framing_metabox'],
+      self::POST_TYPE,
+      'side',
+      'high'
+    );
+
+  }
+
+  public static function render_image_framing_metabox($post) {
+    $image_url = get_the_post_thumbnail_url($post->ID, 'large');
+    $position_x = self::normalise_image_position(
+      get_post_meta($post->ID, self::META_IMAGE_POSITION_X, true)
+    );
+    $position_y = self::normalise_image_position(
+      get_post_meta($post->ID, self::META_IMAGE_POSITION_Y, true)
+    );
+    $image_zoom = self::normalise_image_zoom(
+      get_post_meta($post->ID, self::META_IMAGE_ZOOM, true)
+    );
+    ?>
+    <style>
+      .kcfh-client-crop-preview {
+        width: 100%;
+        max-width: 240px;
+        aspect-ratio: 3 / 4;
+        margin: 0 auto 14px;
+        overflow: hidden;
+        border: 1px solid #c3c4c7;
+        border-radius: 10px;
+        background: #f0f0f1;
+      }
+      .kcfh-client-crop-preview[hidden] { display: none; }
+      .kcfh-client-crop-preview img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(<?php echo esc_attr($image_zoom / 100); ?>);
+        transform-origin: <?php echo esc_attr($position_x); ?>% <?php echo esc_attr($position_y); ?>%;
+      }
+      .kcfh-image-position-control { margin: 12px 0; }
+      .kcfh-image-position-control label {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+        font-weight: 600;
+      }
+      .kcfh-image-position-control input[type="range"] { width: 100%; }
+      .kcfh-client-crop-empty {
+        padding: 14px;
+        margin-bottom: 12px;
+        border: 1px dashed #c3c4c7;
+        border-radius: 8px;
+        text-align: center;
+        color: #646970;
+      }
+    </style>
+
+    <p>Choose the client's photo in the <strong>Featured image</strong> box, then position it inside the gallery frame.</p>
+
+    <div
+      id="kcfhClientCropPreviewFrame"
+      class="kcfh-client-crop-preview"
+      <?php echo $image_url ? '' : 'hidden'; ?>
+    >
+      <img
+        id="kcfhClientCropPreview"
+        src="<?php echo esc_url($image_url ?: ''); ?>"
+        alt="Gallery crop preview"
+        style="object-position: <?php echo esc_attr($position_x); ?>% <?php echo esc_attr($position_y); ?>%;"
+      >
+    </div>
+
+    <div
+      id="kcfhClientCropEmpty"
+      class="kcfh-client-crop-empty"
+      <?php echo $image_url ? 'hidden' : ''; ?>
+    >
+      Select a featured image to preview its gallery framing.
+    </div>
+
+    <div class="kcfh-image-position-control">
+      <label for="kcfh_image_position_x">
+        Horizontal position
+        <span id="kcfhImagePositionXValue"><?php echo esc_html($position_x); ?>%</span>
+      </label>
+      <input
+        type="range"
+        id="kcfh_image_position_x"
+        name="kcfh_image_position_x"
+        min="0"
+        max="100"
+        step="1"
+        value="<?php echo esc_attr($position_x); ?>"
+      >
+    </div>
+
+    <div class="kcfh-image-position-control">
+      <label for="kcfh_image_position_y">
+        Vertical position
+        <span id="kcfhImagePositionYValue"><?php echo esc_html($position_y); ?>%</span>
+      </label>
+      <input
+        type="range"
+        id="kcfh_image_position_y"
+        name="kcfh_image_position_y"
+        min="0"
+        max="100"
+        step="1"
+        value="<?php echo esc_attr($position_y); ?>"
+      >
+    </div>
+
+    <div class="kcfh-image-position-control">
+      <label for="kcfh_image_zoom">
+        Zoom
+        <span id="kcfhImageZoomValue"><?php echo esc_html($image_zoom); ?>%</span>
+      </label>
+      <input
+        type="range"
+        id="kcfh_image_zoom"
+        name="kcfh_image_zoom"
+        min="100"
+        max="200"
+        step="1"
+        value="<?php echo esc_attr($image_zoom); ?>"
+      >
+    </div>
+
+    <button type="button" class="button" id="kcfhResetImagePosition">Centre image</button>
+
+    <p class="description">This changes the visible gallery crop without altering the original uploaded image.</p>
+    <?php
   }
 
   public static function SetUpScheduleDebuger($post){
     $startUtc = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_START_AT, true);
     $endUtc   = (int) get_post_meta($post->ID, \KCFH\Streaming\CPT_Client::META_END_AT, true);
-    
+
     $nextStart = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_START, [$post->ID]);
     $nextEnd   = wp_next_scheduled(\KCFH\Streaming\Live_Scheduler::HOOK_END,   [$post->ID]);
 
@@ -102,16 +265,16 @@ class CPT_Client {
 
     <div class="kcfh-grid">
 
-      <?php 
+      <?php
         self::render_client_details($post);
-        self::render_stream_timeframe_metabox($post); 
+        self::render_stream_timeframe_metabox($post);
         self::render_asset_metabox($post);
       ?>
-      
+
       </br>
       <?php
   }
-#endregion 
+#endregion
 
 
 
@@ -157,10 +320,10 @@ public static function render_asset_metabox($post){
       <!-- An ES Module (ECMAScript Module) is a standardized way to organize and share JavaScript code -->
       <!-- ECMA stands for European Computer Manufacturers Association.  -->
 
- 
+
         <!-- will deal with profile pictures later -->
     <!--<p><small>Use the Featured Image box for the profile photo.</small></p> -->
-    
+
 
     <?php
 
@@ -190,7 +353,7 @@ public static function render_asset_metabox($post){
         <?php _e('', 'kcfh'); ?>
     </p>
 
-    
+
     <?php
   }
 
@@ -198,12 +361,12 @@ public static function render_asset_metabox($post){
     $dob  = get_post_meta($post->ID, '_kcfh_dob', true);
     $dod  = get_post_meta($post->ID, '_kcfh_dod', true);
     $show_gallery = get_post_meta($post->ID, '_kcfh_show_in_gallery', true);
-    
+
 
     // For existing posts with no meta yet, treat as "true" in the UI
     $show_checked = ($show_gallery === '' || $show_gallery === '1');
     ?>
-      
+
       <label>
         <input type="checkbox"
                name="kcfh_show_in_gallery"
@@ -223,11 +386,11 @@ public static function render_asset_metabox($post){
         <label for="kcfh_dod">Date of Death</label><br>
         <input type="date" id="kcfh_dod" name="kcfh_dod" value="<?= esc_attr($dod); ?>">
       </p>
-      
+
     <?php
   }
 
-#endregion 
+#endregion
 
 
 
@@ -247,6 +410,20 @@ public static function render_asset_metabox($post){
     $dod = isset($_POST['kcfh_dod']) ? sanitize_text_field($_POST['kcfh_dod']) : '';
     update_post_meta($post_id, '_kcfh_dob', $dob);
     update_post_meta($post_id, '_kcfh_dod', $dod);
+
+    $image_position_x = isset($_POST['kcfh_image_position_x'])
+      ? self::normalise_image_position(wp_unslash($_POST['kcfh_image_position_x']))
+      : 50;
+    $image_position_y = isset($_POST['kcfh_image_position_y'])
+      ? self::normalise_image_position(wp_unslash($_POST['kcfh_image_position_y']))
+      : 50;
+    $image_zoom = isset($_POST['kcfh_image_zoom'])
+      ? self::normalise_image_zoom(wp_unslash($_POST['kcfh_image_zoom']))
+      : 100;
+
+    update_post_meta($post_id, self::META_IMAGE_POSITION_X, $image_position_x);
+    update_post_meta($post_id, self::META_IMAGE_POSITION_Y, $image_position_y);
+    update_post_meta($post_id, self::META_IMAGE_ZOOM, $image_zoom);
 
     //update show in gellery checkbox
     $show_gallery = isset($_POST['kcfh_show_in_gallery']) ? '1' : '0';
@@ -359,6 +536,22 @@ if (array_key_exists('kcfh_asset_id', $_POST)) {
   }
   #endregion
 
+  private static function normalise_image_position($value): int {
+    if ($value === '' || !is_numeric($value)) {
+      return 50;
+    }
+
+    return max(0, min(100, (int) round((float) $value)));
+  }
+
+  private static function normalise_image_zoom($value): int {
+    if ($value === '' || !is_numeric($value)) {
+      return 100;
+    }
+
+    return max(100, min(200, (int) round((float) $value)));
+  }
+
 
   private static function utc_to_local_input_value($utcTs) {
     if (!$utcTs) return '';
@@ -392,7 +585,7 @@ if (array_key_exists('kcfh_asset_id', $_POST)) {
             'posts_per_page' => -1, // number of posts to query -1 for all
             'fields'         => 'ids', // post fields to query - Id returns an array of post ID's int[]
             'no_found_rows'  => true, // whether to skip counting the total rows found, enabling can improve performance
-            'meta_query'     => [ 
+            'meta_query'     => [
               // an associative array of meta query arguments
               //only return posts that have the _kcfh_asset_id meta key
               [ 'key' => self::KCFH_ASSET_ID, //key - custom field key //------------------ !!!!!!!!!!!!!!!!!! hard coded check, can't scale easily!!!!!!!!!!!!!!!!

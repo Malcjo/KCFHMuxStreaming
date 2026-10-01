@@ -7,11 +7,35 @@ if (!defined('ABSPATH')) exit;
 
 final class Live {
 
+    public static function enqueue_assets($hook_suffix): void {
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page !== 'kcfh_live_settings') {
+            return;
+        }
+
+        wp_enqueue_media();
+
+        $script_path = KCFH_STREAMING_DIR . 'assets/admin-image-tools.js';
+        $version = file_exists($script_path) ? (string) filemtime($script_path) : KCFH_STREAMING_VERSION;
+
+        wp_enqueue_script(
+            'kcfh-admin-image-tools',
+            KCFH_STREAMING_URL . 'assets/admin-image-tools.js',
+            [],
+            $version,
+            true
+        );
+    }
+
     public static function render_settings(): void {
         if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
 
         $live_playback = get_option(Constants::OPT_LIVE_PLAYBACK, '');
         $live_client   = (int) get_option(Constants::OPT_LIVE_CLIENT, 0);
+        $default_image_id = (int) get_option(Constants::OPT_DEFAULT_GALLERY_IMAGE, 0);
+        $default_image_url = $default_image_id
+            ? wp_get_attachment_image_url($default_image_id, 'medium')
+            : '';
 
         $rtmp_url   = defined('KCFH_LIVE_RTMP_URL')   ? KCFH_LIVE_RTMP_URL   : '';
         $stream_key = defined('KCFH_LIVE_STREAM_KEY') ? KCFH_LIVE_STREAM_KEY : '';
@@ -41,6 +65,16 @@ final class Live {
         echo '<tr><th scope="row">Currently Live Client</th><td>';
         echo $live_client ? esc_html(get_the_title($live_client)).' (#'.$live_client.')' : 'None';
         echo '<p class="description">Use “Set Live / Unset Live” on the Dashboard. Only one client can be Live.</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row">Default gallery image</th><td>';
+        echo '<input type="hidden" id="kcfhDefaultGalleryImageId" name="kcfh_default_gallery_image_id" value="'.esc_attr($default_image_id).'">';
+        echo '<div id="kcfhDefaultGalleryImagePreview" style="margin-bottom:10px;'.($default_image_url ? '' : 'display:none;').'">';
+        echo '<img src="'.esc_url($default_image_url ?: '').'" alt="Default gallery image preview" style="display:block;width:150px;aspect-ratio:3/4;object-fit:cover;border:1px solid #c3c4c7;border-radius:8px;background:#f0f0f1;">';
+        echo '</div>';
+        echo '<button type="button" class="button" id="kcfhSelectDefaultGalleryImage">Choose default image</button> ';
+        echo '<button type="button" class="button" id="kcfhRemoveDefaultGalleryImage"'.($default_image_url ? '' : ' style="display:none;"').'>Remove</button>';
+        echo '<p class="description">Used in the public gallery whenever a client does not have a featured image.</p>';
         echo '</td></tr>';
 
         echo '</tbody></table>';
@@ -119,6 +153,17 @@ final class Live {
         check_admin_referer('kcfh_save_live_settings');
         $playback = isset($_POST['kcfh_live_playback_id']) ? sanitize_text_field($_POST['kcfh_live_playback_id']) : '';
         update_option(Constants::OPT_LIVE_PLAYBACK, $playback);
+
+        $default_image_id = isset($_POST['kcfh_default_gallery_image_id'])
+            ? absint($_POST['kcfh_default_gallery_image_id'])
+            : 0;
+
+        if ($default_image_id && wp_attachment_is_image($default_image_id)) {
+            update_option(Constants::OPT_DEFAULT_GALLERY_IMAGE, $default_image_id);
+        } else {
+            delete_option(Constants::OPT_DEFAULT_GALLERY_IMAGE);
+        }
+
         wp_safe_redirect(admin_url('admin.php?page=kcfh_live_settings'));
         exit;
     }
