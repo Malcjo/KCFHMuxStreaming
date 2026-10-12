@@ -104,7 +104,7 @@ class Live_Scheduler {
         }
 
         if (class_exists(__NAMESPACE__ . '\\Live_Service')) {
-            $stop_result = Live_Service::force_stop_configured_stream();
+            //$stop_result = Live_Service::force_stop_configured_stream();
 
             if (is_wp_error($stop_result)) {
                 $attempts = (int) get_post_meta($post_id, '_kcfh_mux_stop_attempts', true) + 1;

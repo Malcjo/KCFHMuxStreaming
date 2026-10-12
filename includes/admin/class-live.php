@@ -136,13 +136,20 @@ final class Live {
 
         if ($client_id > 0) {
             $response = Live_Service::refresh_for_client($client_id);
-        } else {
+            if (is_wp_error($response)) {
+                error_log(
+                    '[KCFH] Mux live action failed: ' . 
+                    $response->get_error_message()
+                );
+            }
+        } 
+        /*
+        else {
             $response = Live_Service::force_stop_configured_stream();
         }
+        */
 
-        if (is_wp_error($response)) {
-            error_log('[KCFH] Mux live action failed: ' . $response->get_error_message());
-        }
+
 
         wp_safe_redirect(admin_url('admin.php?page=kcfh_streaming'));
         exit;
