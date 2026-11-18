@@ -2,7 +2,7 @@
 /**
  * Plugin Name: KCFH-Streaming
  * Description: Secure Mux integration (shortcodes, utilities). First feature: [kcfh_stream_gallery] gallery of Mux VOD assets.
- * Version:     0.2.2
+ * Version:     0.3.0
  * Author:      KCFH
  * License:     GPLv2 or later
  */
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) exit;
 
 
 
-define('KCFH_STREAMING_VERSION', '0.2.2');
+define('KCFH_STREAMING_VERSION', '0.3.0');
 
 //__FILE__ provides the full path and filename of the current file where this is being used
 define('KCFH_STREAMING_FILE', __FILE__);
@@ -28,11 +28,6 @@ define('KCFH_STREAMING_CACHE_PREFIX', 'kcfh_streaming_');
 
 define('KCFH_DEBUGMODE', false);
 
-// Hard security checks: ensure creds come from server-only config.
-if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
-    // Don’t block activation; shortcode will show a helpful message.
-}
-
 // Autoload (simple): require needed classes.
 //require once only needs to be called once
 // will throw a fatal error if cannot find
@@ -41,6 +36,7 @@ if (!defined('MUX_TOKEN_ID') || !defined('MUX_TOKEN_SECRET')) {
 //this is used here as the standard .= can only be used with variables
 require_once KCFH_STREAMING_DIR . 'includes/class-admin.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-cpt-client.php';
+require_once KCFH_STREAMING_DIR . 'includes/class-streaming-settings.php';
 require_once KCFH_STREAMING_DIR . 'includes/class-asset-service.php';
 
 require_once KCFH_STREAMING_DIR . 'includes/class-utility-admin.php';
@@ -62,6 +58,7 @@ require_once KCFH_STREAMING_DIR. '/includes/class-live-scheduler.php';
 require_once KCFH_STREAMING_DIR. 'includes/admin/class-all-clients.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-constants.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-notices.php';
+require_once KCFH_STREAMING_DIR. '/includes/admin/class-connection-settings.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-menu.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-dashboard.php';
 require_once KCFH_STREAMING_DIR. '/includes/admin/class-live.php';
@@ -79,7 +76,7 @@ require_once KCFH_STREAMING_DIR . 'includes/front/class-gallery-display.php';
 require_once KCFH_STREAMING_DIR . 'includes/front/class-search-bar.php';
 
 
-//add acton is a hook when WP reaches a certain point of the page being loaded it calls the hooks 
+//add acton is a hook when WP reaches a certain point of the page being loaded it calls the hooks
 
 //Hook the scheduler on init so cron hooks & the 5-min tick are registered.
 
@@ -90,7 +87,7 @@ add_action('init', ['KCFH\Streaming\Live_Scheduler', 'bootstrap']);
 add_action('plugins_loaded', function () {
     // Init services
     \KCFH\Streaming\CPT_Client::init();
-    
+
     \KCFH\Streaming\Admin_UI::boot();
     \KCFH\Streaming\Live_Flip_Service::boot();
 
@@ -99,7 +96,7 @@ add_action('plugins_loaded', function () {
     //\KCFH\STREAMING\Shortcode_KCFHGallery::bootstrap();
 
     \KCFH\STREAMING\Gallery_Display::bootstrap();
-  
+
 });
 //custom hook
 add_action('utilities_loaded', function(){
@@ -194,8 +191,8 @@ add_action('admin_notices', function () {
 */
 //admin menu: fires before the admin menu loads
 add_action('admin_menu', function () {
-  
-  
+
+
 
   //\KCFH\Streaming\Admin_UI::register_menus();
 });

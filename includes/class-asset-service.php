@@ -20,7 +20,7 @@ class Asset_Service {
      */
 
 
-     //builds a qery for /assets with 
+     //builds a qery for /assets with
      //limit, order, direciton, status and pagination cursor
     public static function fetch_assets(array $args = [], $cache_ttl = 60) {
         $defaults = [
@@ -33,13 +33,13 @@ class Asset_Service {
         ];
         $args = wp_parse_args($args, $defaults);
 
-        $token_id     = defined('MUX_TOKEN_ID')     ? MUX_TOKEN_ID     : '';
-        $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+        $token_id     = Streaming_Settings::get_mux_token_id();
+        $token_secret = Streaming_Settings::get_mux_token_secret();
 
-        
+
 
         if (!$token_id || !$token_secret) {
-            return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+            return new \WP_Error('kcfh_mux_creds', 'Mux credentials are not configured.');
         }
 
         // Allow external code to adjust args safely
@@ -81,7 +81,7 @@ class Asset_Service {
         if ($code < 200 || $code >= 300) {
             return new \WP_Error('kcfh_mux_http', 'Mux API HTTP ' . $code . ': ' . $body);
         }
-        
+
         $json = json_decode($body, true);
         if (!is_array($json) || !isset($json['data'])) {
             return new \WP_Error('kcfh_mux_json', 'Unexpected Mux response.');
@@ -112,7 +112,7 @@ class Asset_Service {
                 'created_at'   => isset($a['created_at']) ? sanitize_text_field($a['created_at']) : '',
                 'duration'     => isset($a['duration']) ? (float) $a['duration'] : 0,
                 'playback_ids' => isset($a['playback_ids']) && is_array($a['playback_ids']) ? $a['playback_ids'] : [],
-                
+
                 'title'        => !empty($meta['title']) ? sanitize_text_field($meta['title'])
                                 : (!empty($a['title']) ? sanitize_text_field($a['title']) : ''),
                 'creator_id'   => !empty($meta['creator_id'])  ? sanitize_text_field($meta['creator_id'])  : '',
@@ -155,8 +155,8 @@ class Asset_Service {
     }
 
     public static function fetch_asset($asset_id, $cache_ttl = 300) {
-    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
-    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    $token_id     = Streaming_Settings::get_mux_token_id();
+    $token_secret = Streaming_Settings::get_mux_token_secret();
     if (!$token_id || !$token_secret) {
         return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured.');
     }
@@ -209,8 +209,8 @@ public static function get_asset($asset_id, $cache_ttl = 300) {
         return new \WP_Error('kcfh_mux_assetid', 'Missing Mux Asset ID.');
     }
 
-    $token_id     = defined('MUX_TOKEN_ID')     ? MUX_TOKEN_ID     : '';
-    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    $token_id     = Streaming_Settings::get_mux_token_id();
+    $token_secret = Streaming_Settings::get_mux_token_secret();
     if (!$token_id || !$token_secret) {
         return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured.');
     }
@@ -266,10 +266,10 @@ public static function get_asset($asset_id, $cache_ttl = 300) {
 
 /** Create a static rendition for this asset: 'highest' | '1080p' | '720p' | 'audio-only' */
 public static function create_static_rendition(string $asset_id, string $resolution = 'highest') {
-    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
-    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    $token_id     = Streaming_Settings::get_mux_token_id();
+    $token_secret = Streaming_Settings::get_mux_token_secret();
     if (!$token_id || !$token_secret) {
-        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials are not configured.');
     }
     $url  = self::API_BASE . '/assets/' . rawurlencode($asset_id) . '/static-renditions';
     $resp = wp_remote_post($url, [
@@ -289,10 +289,10 @@ public static function create_static_rendition(string $asset_id, string $resolut
 
 /** Fetch the RAW asset (full Mux shape). Returns the array under 'data'. */
 public static function get_asset_raw(string $asset_id) {
-    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
-    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    $token_id     = Streaming_Settings::get_mux_token_id();
+    $token_secret = Streaming_Settings::get_mux_token_secret();
     if (!$token_id || !$token_secret) {
-        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials are not configured.');
     }
     $url  = self::API_BASE . '/assets/' . rawurlencode($asset_id);
     $resp = wp_remote_get($url, [
@@ -376,11 +376,11 @@ public static function update_asset_title(string $asset_id, string $title) {
         return new \WP_Error('kcfh_mux_no_asset', 'Missing asset_id or title for update.');
     }
 
-    $token_id     = defined('MUX_TOKEN_ID')     ? MUX_TOKEN_ID     : '';
-    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    $token_id     = Streaming_Settings::get_mux_token_id();
+    $token_secret = Streaming_Settings::get_mux_token_secret();
 
     if (!$token_id || !$token_secret) {
-        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials are not configured.');
     }
 
     $url  = self::API_BASE . '/assets/' . rawurlencode($asset_id);
@@ -443,10 +443,10 @@ public static function create_asset_clip(
         return new \WP_Error('kcfh_mux_invalid_clip', 'The clip start and end times are invalid.');
     }
 
-    $token_id     = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
-    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    $token_id     = Streaming_Settings::get_mux_token_id();
+    $token_secret = Streaming_Settings::get_mux_token_secret();
     if (!$token_id || !$token_secret) {
-        return new \WP_Error('kcfh_mux_creds', 'Mux credentials not configured in wp-config.php.');
+        return new \WP_Error('kcfh_mux_creds', 'Mux credentials are not configured.');
     }
 
     $allowed_quality = ['basic', 'plus'];

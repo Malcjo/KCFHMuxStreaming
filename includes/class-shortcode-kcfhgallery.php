@@ -75,7 +75,7 @@ class Shortcode_KCFHGallery {
                     $back_url = esc_url(remove_query_arg('kcfh_client'));
                     $pbid     = esc_attr($play['playback_id']);
                     $is_live  = !empty($play['is_live']);
-                    
+
                     $live_id   = (int) get_option('kcfh_live_client_id', 0);
                     $live_pbid = (string) get_option('kcfh_live_playback_id', '');
 
@@ -85,7 +85,7 @@ class Shortcode_KCFHGallery {
 
 
                     ?>
-                    
+
                     <div class="kcfh-single">
                         <a class="kcfh-back" href="<?php echo $back_url; ?>">&larr; Back</a>
                         <h2 class="kcfh-single-title"><?php echo $name; ?></h2>
@@ -97,14 +97,14 @@ class Shortcode_KCFHGallery {
 
                         <!-- mux-player -->
                         <script type="module" src="https://cdn.jsdelivr.net/npm/@mux/mux-player"></script>
-                        <div id="kcfhPlayerWrap" 
+                        <div id="kcfhPlayerWrap"
                         data-client-id="<?php echo (int)$client_id; ?>"
                         data-end-utc="<?php echo (int)$end_utc;?>"
                         data-ajax-url="<?php echo esc_url( admin_url('admin-ajax.php') ); ?>"
                         data-ajax-action="<?php echo esc_attr( \KCFH\Streaming\Live_Flip_Service::AJAX_CHECK ); ?>"
-                        data-live-stream-id="<?php echo esc_attr( defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '' ); ?>"
+                        data-live-stream-id="<?php echo esc_attr(\KCFH\Streaming\Streaming_Settings::get_live_stream_id()); ?>"
                         >
-                        
+
                             <mux-player id="kcfhPlayer"
                             stream-type="<?php echo $is_live ? 'live' : 'on-demand'; ?>"
                             playback-id="<?php echo $pbid; ?>"
@@ -137,9 +137,9 @@ class Shortcode_KCFHGallery {
                                 //helper to switch the mux player from LIVE to 'on-demand'
                                 function swapToVOD(pb){
                                     const p = document.getElementById('kcfhPlayer');
-                                    if (!p){ 
-                                        console.warn('[KCFH] mux-player not found; reloading page'); 
-                                        location.reload(); 
+                                    if (!p){
+                                        console.warn('[KCFH] mux-player not found; reloading page');
+                                        location.reload();
                                         return;
                                     }
                                     // Update attributes in the mux webplayer

@@ -2,6 +2,7 @@
 namespace KCFH\Streaming\Admin;
 
 use KCFH\Streaming\Live_Service;
+use KCFH\Streaming\Streaming_Settings;
 
 if (!defined('ABSPATH')) exit;
 
@@ -30,6 +31,8 @@ final class Live {
     public static function render_settings(): void {
         if (!current_user_can('kcfh_streaming_access')) wp_die('Nope');
 
+        AdminToolbar::render('live');
+
         $live_playback = get_option(Constants::OPT_LIVE_PLAYBACK, '');
         $live_client   = (int) get_option(Constants::OPT_LIVE_CLIENT, 0);
         $default_image_id = (int) get_option(Constants::OPT_DEFAULT_GALLERY_IMAGE, 0);
@@ -37,18 +40,18 @@ final class Live {
             ? wp_get_attachment_image_url($default_image_id, 'medium')
             : '';
 
-        $rtmp_url   = defined('KCFH_LIVE_RTMP_URL')   ? KCFH_LIVE_RTMP_URL   : '';
-        $stream_key = defined('KCFH_LIVE_STREAM_KEY') ? KCFH_LIVE_STREAM_KEY : '';
-        $stream_id  = defined('KCFH_LIVE_STREAM_ID')  ? KCFH_LIVE_STREAM_ID  : '';
+        $rtmp_url   = Streaming_Settings::get_rtmp_url();
+        $stream_key = Streaming_Settings::get_rtmp_stream_key();
+        $stream_id  = Streaming_Settings::get_live_stream_id();
 
         echo '<div class="wrap"><h1>Live Settings</h1>';
 
         if (!$rtmp_url || !$stream_key) {
-            echo '<div class="notice notice-error"><p><strong>Missing RTMP URL or Stream Key.</strong> Add KCFH_LIVE_RTMP_URL and KCFH_LIVE_STREAM_KEY to <code>wp-config.php</code>.</p></div>';
+            echo '<div class="notice notice-warning"><p><strong>Broadcaster setup is incomplete.</strong> Add the RTMP URL and Stream Key under <a href="'.esc_url(menu_page_url(Connection_Settings_Page::PAGE_SLUG, false)).'">Connection Settings</a>.</p></div>';
         }
 
         if (!$stream_id) {
-            echo '<div class="notice notice-error"><p><strong>Missing Mux Live Stream ID.</strong> Add KCFH_LIVE_STREAM_ID to <code>wp-config.php</code> so scheduled start/stop can enable and disable ingest.</p></div>';
+            echo '<div class="notice notice-warning"><p><strong>Missing Mux Live Stream ID.</strong> Add it under <a href="'.esc_url(menu_page_url(Connection_Settings_Page::PAGE_SLUG, false)).'">Connection Settings</a>.</p></div>';
         }
 
         echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
@@ -93,7 +96,7 @@ final class Live {
         if ($stream_key) {
             $masked = str_repeat('•', max(0, strlen($stream_key) - 6)) . substr($stream_key, -6);
             echo '<input type="text" readonly value="'.esc_attr($masked).'" class="regular-text" style="max-width:360px;">';
-            echo '<p class="description">Kept only in <code>wp-config.php</code>. Do not share.</p>';
+            echo '<p class="description">Stored as '.esc_html(Streaming_Settings::get_value_source('KCFH_LIVE_STREAM_KEY', 'rtmp_stream_key')).'. Do not share.</p>';
         } else {
             echo '<em>Not set</em>';
         }
@@ -138,11 +141,11 @@ final class Live {
             $response = Live_Service::refresh_for_client($client_id);
             if (is_wp_error($response)) {
                 error_log(
-                    '[KCFH] Mux live action failed: ' . 
+                    '[KCFH] Mux live action failed: ' .
                     $response->get_error_message()
                 );
             }
-        } 
+        }
         /*
         else {
             $response = Live_Service::force_stop_configured_stream();
@@ -182,7 +185,7 @@ final class Live {
         $win = isset($_POST['window']) ? (int) $_POST['window'] : 0;
         $win = max(0, min(1800, $win));
 
-        $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : '';
+        $live_stream_id = Streaming_Settings::get_live_stream_id();
         if ($live_stream_id && class_exists(Live_Service::class)) {
             $resp = Live_Service::update_live_stream($live_stream_id, ['reconnect_window' => $win]);
             if (is_wp_error($resp)) {

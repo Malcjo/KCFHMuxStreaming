@@ -6,8 +6,8 @@ if (!defined('ABSPATH')) exit;
 
 class Live_Service {
   private static function auth_headers() {
-    $token_id = defined('MUX_TOKEN_ID') ? MUX_TOKEN_ID : '';
-    $token_secret = defined('MUX_TOKEN_SECRET') ? MUX_TOKEN_SECRET : '';
+    $token_id = Streaming_Settings::get_mux_token_id();
+    $token_secret = Streaming_Settings::get_mux_token_secret();
 
     return [
       'Authorization' => 'Basic ' . base64_encode($token_id . ':' . $token_secret),
@@ -17,7 +17,7 @@ class Live_Service {
   }
 
   private static function validate_configuration() {
-    if (!defined('MUX_TOKEN_ID') || !MUX_TOKEN_ID || !defined('MUX_TOKEN_SECRET') || !MUX_TOKEN_SECRET) {
+    if (!Streaming_Settings::has_mux_credentials()) {
       return new \WP_Error('mux_credentials', 'Mux credentials are not configured.');
     }
 
@@ -116,9 +116,9 @@ class Live_Service {
 
   /** Enable the shared camera and label the next Mux recording for a client. */
   public static function refresh_for_client($client_id) {
-    $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? trim((string) KCFH_LIVE_STREAM_ID) : '';
+    $live_stream_id = Streaming_Settings::get_live_stream_id();
     if ($live_stream_id === '') {
-      return new \WP_Error('mux_live_stream_id', 'KCFH_LIVE_STREAM_ID is not configured.');
+      return new \WP_Error('mux_live_stream_id', 'Mux Live Stream ID is not configured.');
     }
 
     $client_id = (int) $client_id;
@@ -149,11 +149,11 @@ class Live_Service {
     return $updated;
   }
 
-  /** Hard-stop the shared camera configured in wp-config.php. */
+  /** Hard-stop the configured shared camera. */
   public static function force_stop_configured_stream() {
-    $live_stream_id = defined('KCFH_LIVE_STREAM_ID') ? trim((string) KCFH_LIVE_STREAM_ID) : '';
+    $live_stream_id = Streaming_Settings::get_live_stream_id();
     if ($live_stream_id === '') {
-      return new \WP_Error('mux_live_stream_id', 'KCFH_LIVE_STREAM_ID is not configured.');
+      return new \WP_Error('mux_live_stream_id', 'Mux Live Stream ID is not configured.');
     }
 
     return self::disable_live_stream($live_stream_id);

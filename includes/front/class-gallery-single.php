@@ -70,7 +70,7 @@ class Gallery_Single
                  data-end-utc="<?php echo (int) $end_utc; ?>"
                  data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>"
                  data-ajax-action="<?php echo esc_attr(\KCFH\Streaming\Live_Flip_Service::AJAX_CHECK); ?>"
-                 data-live-stream-id="<?php echo esc_attr(defined('KCFH_LIVE_STREAM_ID') ? KCFH_LIVE_STREAM_ID : ''); ?>">
+                 data-live-stream-id="<?php echo esc_attr(\KCFH\Streaming\Streaming_Settings::get_live_stream_id()); ?>">
                 <mux-player id="kcfhPlayer"
                             stream-type="<?php echo $is_live ? 'live' : 'on-demand'; ?>"
                             playback-id="<?php echo $pbid; ?>"
@@ -95,7 +95,7 @@ class Gallery_Single
 
         return ob_get_clean();
 
-        
+
 
     }
 

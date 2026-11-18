@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) exit;
 
 final class AdminToolbar {
     /**
-     * @param string $active One of: dashboard|vod|clients|add-client|live
+     * @param string $active One of: dashboard|vod|clients|add-client|connection|live
      */
     public static function render(string $active = 'dashboard') {
 
@@ -18,6 +18,8 @@ final class AdminToolbar {
             'vod'        => menu_page_url('kcfh_vod_manager', false),
             'clients'        => menu_page_url(All_Clients_Page::SLUG, false),
             'add_client'    => admin_url('post-new.php?post_type=' . CPT_Client::POST_TYPE),
+            'connection' => menu_page_url(Connection_Settings_Page::PAGE_SLUG, false),
+            'live'       => menu_page_url('kcfh_live_settings', false),
         ];
 
         // Label order (controls display order and content)
@@ -26,6 +28,8 @@ final class AdminToolbar {
             'vod'        => 'VOD Manager',
             'clients'    => 'Clients',
             'add_client' => "+ Add Client",
+            'connection' => 'Connection Settings',
+            'live'       => 'Live Settings',
         ];
         ?>
         <style>
@@ -56,9 +60,9 @@ final class AdminToolbar {
 
         <div class="kcfh-admin-toolbar">
           <div class="kcfh-toolbar-inner">
-            <?php 
+            <?php
             foreach ($items as $key => $label)
-              { 
+              {
               $is_active = ($key === $active);
               $class     = 'kcfh-btn' . ($is_active ? ' primary' : '');
               $url       = $urls[$key] ?? '#';

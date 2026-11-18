@@ -18,6 +18,7 @@ class Admin_UI {
         // Require admin layer (split controllers)
         require_once __DIR__ . '/admin/class-constants.php';
         require_once __DIR__ . '/admin/class-notices.php';
+        require_once __DIR__ . '/admin/class-connection-settings.php';
         require_once __DIR__ . '/admin/class-menu.php';
         require_once __DIR__ . '/admin/class-dashboard.php';
         require_once __DIR__ . '/admin/class-live.php';

@@ -9,11 +9,14 @@ final class Menu {
     public static function boot(): void {
         add_action('admin_menu', [__CLASS__, 'register_menus']);
         add_action('admin_enqueue_scripts', [Live::class, 'enqueue_assets']);
+        add_action('admin_notices', [Connection_Settings_Page::class, 'render_setup_notice']);
 
         // Admin-post endpoints
         add_action('admin_post_kcfh_set_live',             [Live::class, 'handle_set_live']);
         add_action('admin_post_kcfh_save_live_settings',   [Live::class, 'handle_save_live_settings']);
         add_action('admin_post_kcfh_set_reconnect_window', [Live::class, 'handle_set_reconnect_window']);
+        add_action('admin_post_kcfh_save_connection_settings', [Connection_Settings_Page::class, 'handle_save']);
+        add_action('admin_post_kcfh_test_mux_connection',      [Connection_Settings_Page::class, 'handle_test']);
         add_action('admin_post_kcfh_enable_mp4',           [Vod_Manager::class, 'handle_enable_mp4']);
         add_action('admin_post_kcfh_download_mp4',         [Vod_Manager::class, 'handle_download_mp4']);
         add_action('admin_post_kcfh_create_vod_clip',      [Vod_Manager::class, 'handle_create_clip']);
@@ -35,6 +38,7 @@ final class Menu {
 
         add_submenu_page('kcfh_streaming', 'Dashboard', 'Dashboard', 'manage_options', 'kcfh_streaming', [Dashboard::class, 'render']);
         add_submenu_page('kcfh_streaming', 'VOD Manager', 'VOD Manager', 'manage_options', 'kcfh_vod_manager', [Vod_Manager::class, 'render']);
+        add_submenu_page('kcfh_streaming', 'Connection Settings', 'Connection Settings', 'manage_options', Connection_Settings_Page::PAGE_SLUG, [Connection_Settings_Page::class, 'render']);
         add_submenu_page('kcfh_streaming', 'Live Settings', 'Live Settings', 'manage_options', 'kcfh_live_settings', [Live::class, 'render_settings']);
 
         // Native post screens

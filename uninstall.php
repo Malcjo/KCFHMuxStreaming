@@ -9,3 +9,5 @@ $wpdb->query( $wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIK
 
 $prefix_to = '_transient_timeout_kcfh_streaming_%';
 $wpdb->query( $wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $prefix_to) );
+
+delete_option('kcfh_streaming_connection_settings');
